@@ -299,5 +299,3 @@ function Dashboard() {
   );
 }
 
-// silence unused import warning
-void Phone;
