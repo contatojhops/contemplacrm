@@ -7,7 +7,6 @@ import {
   FileText,
   CheckCircle2,
   DollarSign,
-  Phone,
   MessageCircle,
 } from "lucide-react";
 import {
