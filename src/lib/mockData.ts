@@ -52,4 +52,8 @@ export const defaultConfig: Configuracoes = {
   consultorNome: "João Silva",
   consultorEmail: "joao@consorcio.com",
   whatsappNumero: "5511999998888",
+  taxaAdmin: 18,
+  fundoReserva: 2,
+  comissao: 1.5,
+  valorSeguroDefault: 35,
 };
