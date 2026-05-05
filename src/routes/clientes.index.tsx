@@ -13,7 +13,7 @@ import { ScoreBadge } from "@/components/LeadCard";
 import { toast } from "sonner";
 import type { Cliente, ClienteFase, ClientePerfil, Produto, Temperatura } from "@/lib/types";
 
-export const Route = createFileRoute("/clientes")({ component: ClientesPage });
+export const Route = createFileRoute("/clientes/")({ component: ClientesPage });
 
 const FASES: (ClienteFase | "Todos")[] = ["Todos", "Lead", "Recuperação", "Cliente Ativo", "Contemplado"];
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
