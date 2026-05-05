@@ -9,6 +9,9 @@ export type Etapa =
   | "Fechado"
   | "Perdido";
 
+export type ClientePerfil = "Pessoa Física" | "Profissional Liberal" | "Empresário" | "Investidor";
+export type ClienteFase = "Lead" | "Recuperação" | "Cliente Ativo" | "Contemplado";
+
 export interface Lead {
   id: string;
   nome: string;
@@ -25,11 +28,53 @@ export interface Lead {
   respondeuMensagem?: boolean;
   reuniaoAgendada?: boolean;
   temUrgencia?: boolean;
-  ultimoContato: string; // ISO
-  proximoFollowUp?: string; // ISO
+  ultimoContato: string;
+  proximoFollowUp?: string;
   proximaAcaoTipo?: string;
   diasNaEtapa: number;
   criadoEm: string;
+}
+
+export type InteracaoTipo = "WhatsApp" | "Ligação" | "Reunião" | "Instagram DM" | "E-mail" | "Presencial";
+export type InteracaoResultado = "Positivo" | "Neutro" | "Negativo";
+
+export interface Interacao {
+  id: string;
+  tipo: InteracaoTipo;
+  data: string;
+  duracao?: number;
+  resumo: string;
+  resultado: InteracaoResultado;
+  objecoes?: string[];
+}
+
+export interface ObjecaoRegistrada {
+  id: string;
+  texto: string;
+  resposta: string;
+  data: string;
+}
+
+export interface Documento {
+  id: string;
+  nome: string;
+  tipo: string;
+  tamanho: number;
+  data: string;
+  base64: string;
+}
+
+export interface ProximaAcao {
+  data: string;
+  hora?: string;
+  tipo: string;
+  descricao: string;
+}
+
+export interface AcaoConcluida {
+  data: string;
+  tipo: string;
+  descricao: string;
 }
 
 export interface Cliente {
@@ -43,17 +88,47 @@ export interface Cliente {
   parcelasTotais: number;
   contemplado: boolean;
   fechadoEm: string;
+  // estendidos
+  cpf?: string;
+  dataNascimento?: string;
+  profissao?: string;
+  rendaEstimada?: number;
+  cidade?: string;
+  estado?: string;
+  origem?: Origem;
+  perfil?: ClientePerfil;
+  fase?: ClienteFase;
+  temperatura?: Temperatura;
+  tags?: string[];
+  ultimaInteracao?: string;
+  prazoMeses?: number;
+  parcelaEstimada?: number;
+  observacoesProduto?: string;
+  interacoes?: Interacao[];
+  objecoes?: ObjecaoRegistrada[];
+  documentos?: Documento[];
+  proximaAcao?: ProximaAcao;
+  acoesConcluidas?: AcaoConcluida[];
 }
+
+export type TarefaTipo = "Ligação" | "WhatsApp" | "Reunião" | "E-mail" | "Visita" | "Follow-up" | "Enviar Proposta" | "Recontato" | "Outro";
+export type TarefaPrioridade = "Alta" | "Média" | "Baixa";
 
 export interface Tarefa {
   id: string;
   titulo: string;
-  tipo: "Ligação" | "WhatsApp" | "Reunião" | "E-mail" | "Visita";
+  tipo: TarefaTipo;
   cliente: string;
+  clienteId?: string;
   leadId?: string;
-  data: string; // ISO
+  data: string;
   concluida: boolean;
+  prioridade?: TarefaPrioridade;
+  descricao?: string;
+  lembrete?: boolean;
 }
+
+export type PropostaStatus = "Rascunho" | "Enviada" | "Em Análise" | "Aprovada" | "Aceita" | "Recusada";
 
 export interface Proposta {
   id: string;
@@ -63,8 +138,15 @@ export interface Proposta {
   valorCarta: number;
   prazoMeses: number;
   parcela: number;
-  status: "Rascunho" | "Enviada" | "Aceita" | "Recusada";
+  status: PropostaStatus;
   criadaEm: string;
+  taxaAdmin?: number;
+  fundoReserva?: number;
+  seguro?: boolean;
+  valorSeguro?: number;
+  comissaoEstimada?: number;
+  observacoes?: string;
+  clienteId?: string;
 }
 
 export interface Campanha {
@@ -84,4 +166,8 @@ export interface Configuracoes {
   consultorNome: string;
   consultorEmail: string;
   whatsappNumero: string;
+  taxaAdmin: number;
+  fundoReserva: number;
+  comissao: number;
+  valorSeguroDefault: number;
 }

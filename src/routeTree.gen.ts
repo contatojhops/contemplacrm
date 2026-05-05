@@ -12,11 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PropostasRouteImport } from './routes/propostas'
 import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
-import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CarteiraRouteImport } from './routes/carteira'
 import { Route as CampanhasRouteImport } from './routes/campanhas'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
+import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 
 const PropostasRoute = PropostasRouteImport.update({
   id: '/propostas',
@@ -31,11 +32,6 @@ const LeadsRoute = LeadsRouteImport.update({
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientesRoute = ClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CarteiraRoute = CarteiraRouteImport.update({
@@ -58,26 +54,38 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientesIndexRoute = ClientesIndexRouteImport.update({
+  id: '/clientes/',
+  path: '/clientes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientesIdRoute = ClientesIdRouteImport.update({
+  id: '/clientes/$id',
+  path: '/clientes/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/campanhas': typeof CampanhasRoute
   '/carteira': typeof CarteiraRoute
-  '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/leads': typeof LeadsRoute
   '/propostas': typeof PropostasRoute
+  '/clientes/$id': typeof ClientesIdRoute
+  '/clientes/': typeof ClientesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/campanhas': typeof CampanhasRoute
   '/carteira': typeof CarteiraRoute
-  '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/leads': typeof LeadsRoute
   '/propostas': typeof PropostasRoute
+  '/clientes/$id': typeof ClientesIdRoute
+  '/clientes': typeof ClientesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -85,10 +93,11 @@ export interface FileRoutesById {
   '/agenda': typeof AgendaRoute
   '/campanhas': typeof CampanhasRoute
   '/carteira': typeof CarteiraRoute
-  '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/leads': typeof LeadsRoute
   '/propostas': typeof PropostasRoute
+  '/clientes/$id': typeof ClientesIdRoute
+  '/clientes/': typeof ClientesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,30 +106,33 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/campanhas'
     | '/carteira'
-    | '/clientes'
     | '/configuracoes'
     | '/leads'
     | '/propostas'
+    | '/clientes/$id'
+    | '/clientes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agenda'
     | '/campanhas'
     | '/carteira'
-    | '/clientes'
     | '/configuracoes'
     | '/leads'
     | '/propostas'
+    | '/clientes/$id'
+    | '/clientes'
   id:
     | '__root__'
     | '/'
     | '/agenda'
     | '/campanhas'
     | '/carteira'
-    | '/clientes'
     | '/configuracoes'
     | '/leads'
     | '/propostas'
+    | '/clientes/$id'
+    | '/clientes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -128,10 +140,11 @@ export interface RootRouteChildren {
   AgendaRoute: typeof AgendaRoute
   CampanhasRoute: typeof CampanhasRoute
   CarteiraRoute: typeof CarteiraRoute
-  ClientesRoute: typeof ClientesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   LeadsRoute: typeof LeadsRoute
   PropostasRoute: typeof PropostasRoute
+  ClientesIdRoute: typeof ClientesIdRoute
+  ClientesIndexRoute: typeof ClientesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -155,13 +168,6 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/configuracoes'
       preLoaderRoute: typeof ConfiguracoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/clientes': {
-      id: '/clientes'
-      path: '/clientes'
-      fullPath: '/clientes'
-      preLoaderRoute: typeof ClientesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/carteira': {
@@ -192,6 +198,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/clientes/': {
+      id: '/clientes/'
+      path: '/clientes'
+      fullPath: '/clientes/'
+      preLoaderRoute: typeof ClientesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clientes/$id': {
+      id: '/clientes/$id'
+      path: '/clientes/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof ClientesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -200,10 +220,11 @@ const rootRouteChildren: RootRouteChildren = {
   AgendaRoute: AgendaRoute,
   CampanhasRoute: CampanhasRoute,
   CarteiraRoute: CarteiraRoute,
-  ClientesRoute: ClientesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   LeadsRoute: LeadsRoute,
   PropostasRoute: PropostasRoute,
+  ClientesIdRoute: ClientesIdRoute,
+  ClientesIndexRoute: ClientesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
