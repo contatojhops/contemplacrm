@@ -28,7 +28,7 @@ export function Sidebar() {
   const initials = config.consultorNome.split(" ").map((n) => n[0]).slice(0, 2).join("");
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
+    <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       <div className="px-6 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold">
