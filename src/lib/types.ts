@@ -77,6 +77,16 @@ export interface AcaoConcluida {
   descricao: string;
 }
 
+export type StatusPagamento = "Em Dia" | "Atenção" | "Inadimplente";
+export type Oportunidade = "Upsell" | "Cross-sell" | "Nenhuma";
+
+export interface Indicacao {
+  id: string;
+  nome: string;
+  status: "Lead" | "Cliente Ativo" | "Não convertido";
+  data: string;
+}
+
 export interface Cliente {
   id: string;
   nome: string;
@@ -88,6 +98,18 @@ export interface Cliente {
   parcelasTotais: number;
   contemplado: boolean;
   fechadoEm: string;
+  grupo?: string;
+  cota?: string;
+  parcelaMensal?: number;
+  statusPagamento?: StatusPagamento;
+  oportunidade?: Oportunidade;
+  oportunidadeNotas?: string;
+  contempladoEm?: string;
+  dataAdesao?: string;
+  prazoTotal?: number;
+  prazoRestante?: number;
+  historicoPagamentos?: { mes: string; status: "Pago" | "Atrasado" | "Faltou" }[];
+  indicacoes?: Indicacao[];
   // estendidos
   cpf?: string;
   dataNascimento?: string;
