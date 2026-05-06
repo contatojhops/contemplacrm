@@ -171,25 +171,59 @@ export interface Proposta {
   clienteId?: string;
 }
 
+export type CanalCampanha = "Meta Ads" | "Instagram" | "WhatsApp Broadcast" | "Orgânico" | "Indicação" | "Outro";
+
 export interface Campanha {
   id: string;
   nome: string;
-  canal: Origem;
+  canal: CanalCampanha;
   investimento: number;
   leadsGerados: number;
   vendas: number;
+  receita?: number;
   inicio: string;
   fim?: string;
   ativa: boolean;
+  utm?: string;
+  observacoes?: string;
+}
+
+export interface Template {
+  id: string;
+  nome: string;
+  canal: "WhatsApp" | "Instagram";
+  texto: string;
+}
+
+export interface TagItem {
+  id: string;
+  nome: string;
+  cor: string;
+}
+
+export interface EtapaItem {
+  id: string;
+  nome: string;
+  fixa?: boolean;
 }
 
 export interface Configuracoes {
   metaMensal: number;
+  metaUnidades?: number;
   consultorNome: string;
   consultorEmail: string;
+  consultorTelefone?: string;
+  consultorCargo?: string;
+  consultorFoto?: string;
   whatsappNumero: string;
   taxaAdmin: number;
   fundoReserva: number;
   comissao: number;
   valorSeguroDefault: number;
+  etapas?: EtapaItem[];
+  produtosAtivos?: { nome: string; ativo: boolean }[];
+  origens?: string[];
+  tags?: TagItem[];
+  templates?: Template[];
+  darkMode?: boolean;
 }
