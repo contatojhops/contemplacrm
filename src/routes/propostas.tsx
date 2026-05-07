@@ -21,15 +21,14 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/propostas")({ component: PropostasPage });
 
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
-const STATUS: PropostaStatus[] = ["Rascunho", "Enviada", "Em Análise", "Aprovada", "Aceita", "Recusada"];
+const STATUS: PropostaStatus[] = ["Rascunho", "Enviada", "Em Análise", "Aprovada", "Recusada"];
 
 function statusColor(s: PropostaStatus) {
   switch (s) {
     case "Rascunho": return "bg-secondary text-secondary-foreground";
     case "Enviada": return "bg-primary text-primary-foreground";
     case "Em Análise": return "bg-warning text-warning-foreground";
-    case "Aprovada":
-    case "Aceita": return "bg-success text-success-foreground";
+    case "Aprovada": return "bg-success text-success-foreground";
     case "Recusada": return "bg-destructive text-destructive-foreground";
   }
 }
