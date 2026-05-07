@@ -94,8 +94,17 @@ function ClientesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground">Sua base de clientes</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />Novo Cliente</Button>
+        <Button onClick={() => setModalOpen(true)}><Plus className="h-4 w-4 mr-2" />Novo Cliente</Button>
       </div>
+
+      <LeadModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onSave={(lead: Lead) => {
+          setLeads((p) => [lead, ...p]);
+          toast.success("Cliente cadastrado com sucesso!");
+        }}
+      />
 
       <Card className="p-3 space-y-3">
         <div className="relative max-w-md">
