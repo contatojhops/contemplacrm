@@ -38,28 +38,32 @@ function ClientesPage() {
   const [fPerfil, setFPerfil] = useState("all");
   const [fTemp, setFTemp] = useState("all");
 
-  // Tratar leads também como clientes virtuais para visualização unificada
+  // Tratar leads também como clientes virtuais para visualização unificada (sem duplicar)
   const todos: Cliente[] = useMemo(() => {
-    const fromLeads: Cliente[] = leads.map((l) => ({
-      id: `lead_${l.id}`,
-      nome: l.nome,
-      telefone: l.telefone,
-      email: l.email,
-      produto: l.produto,
-      valorCarta: l.valorCarta,
-      parcelasPagas: 0,
-      parcelasTotais: 0,
-      contemplado: false,
-      fechadoEm: l.criadoEm,
-      fase: "Lead",
-      temperatura: l.temperatura,
-      origem: l.origem,
-      ultimaInteracao: l.ultimoContato,
-    }));
     const enriched = clientes.map((c) => ({
       ...c,
       fase: c.fase ?? (c.contemplado ? "Contemplado" as const : "Cliente Ativo" as const),
     }));
+    const existingKeys = new Set(enriched.map((c) => `${c.nome.toLowerCase()}|${c.telefone}`));
+    const fromLeads: Cliente[] = leads
+      .filter((l) => !existingKeys.has(`${l.nome.toLowerCase()}|${l.telefone}`))
+      .map((l) => ({
+        id: `lead_${l.id}`,
+        nome: l.nome,
+        telefone: l.telefone,
+        email: l.email,
+        produto: l.produto,
+        valorCarta: l.valorCarta,
+        parcelasPagas: 0,
+        parcelasTotais: 0,
+        contemplado: false,
+        fechadoEm: l.criadoEm,
+        fase: "Lead",
+        perfil: l.perfil as Cliente["perfil"],
+        temperatura: l.temperatura,
+        origem: l.origem,
+        ultimaInteracao: l.ultimoContato,
+      }));
     return [...enriched, ...fromLeads];
   }, [clientes, leads]);
 
