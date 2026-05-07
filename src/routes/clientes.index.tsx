@@ -10,7 +10,9 @@ import { Search, Plus, Eye, Pencil, Trash2 } from "lucide-react";
 import { useClientes, useLeads } from "@/lib/store";
 import { calcScore } from "@/lib/scoring";
 import { ScoreBadge } from "@/components/LeadCard";
+import { LeadModal } from "@/components/LeadModal";
 import { toast } from "sonner";
+import type { Lead } from "@/lib/types";
 import type { Cliente, ClienteFase, ClientePerfil, Produto, Temperatura } from "@/lib/types";
 
 export const Route = createFileRoute("/clientes/")({ component: ClientesPage });
@@ -31,7 +33,8 @@ function faseColor(f?: ClienteFase) {
 
 function ClientesPage() {
   const [clientes, setClientes] = useClientes();
-  const [leads] = useLeads();
+  const [leads, setLeads] = useLeads();
+  const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [fase, setFase] = useState<typeof FASES[number]>("Todos");
   const [fProduto, setFProduto] = useState("all");
@@ -91,8 +94,17 @@ function ClientesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground">Sua base de clientes</p>
         </div>
-        <Button><Plus className="h-4 w-4 mr-2" />Novo Cliente</Button>
+        <Button onClick={() => setModalOpen(true)}><Plus className="h-4 w-4 mr-2" />Novo Cliente</Button>
       </div>
+
+      <LeadModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onSave={(lead: Lead) => {
+          setLeads((p) => [lead, ...p]);
+          toast.success("Cliente cadastrado com sucesso!");
+        }}
+      />
 
       <Card className="p-3 space-y-3">
         <div className="relative max-w-md">
