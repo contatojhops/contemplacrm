@@ -33,7 +33,8 @@ function faseColor(f?: ClienteFase) {
 
 function ClientesPage() {
   const [clientes, setClientes] = useClientes();
-  const [leads] = useLeads();
+  const [leads, setLeads] = useLeads();
+  const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [fase, setFase] = useState<typeof FASES[number]>("Todos");
   const [fProduto, setFProduto] = useState("all");
