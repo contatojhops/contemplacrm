@@ -10,7 +10,9 @@ import { Search, Plus, Eye, Pencil, Trash2 } from "lucide-react";
 import { useClientes, useLeads } from "@/lib/store";
 import { calcScore } from "@/lib/scoring";
 import { ScoreBadge } from "@/components/LeadCard";
+import { LeadModal } from "@/components/LeadModal";
 import { toast } from "sonner";
+import type { Lead } from "@/lib/types";
 import type { Cliente, ClienteFase, ClientePerfil, Produto, Temperatura } from "@/lib/types";
 
 export const Route = createFileRoute("/clientes/")({ component: ClientesPage });
