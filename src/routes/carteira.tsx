@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useClientes } from "@/lib/store";
 import { formatBRL } from "@/lib/scoring";
 import type { Cliente, StatusPagamento, Indicacao } from "@/lib/types";
-import { Users, Trophy, AlertTriangle, TrendingUp, Share2, Plus, Eye } from "lucide-react";
+import { Users, Trophy, AlertTriangle, TrendingUp, Share2, Plus, Eye, Pencil, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/carteira")({ component: CarteiraPage });
