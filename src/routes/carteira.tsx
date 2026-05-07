@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useClientes } from "@/lib/store";
 import { formatBRL } from "@/lib/scoring";
 import type { Cliente, StatusPagamento, Indicacao } from "@/lib/types";
-import { Users, Trophy, AlertTriangle, TrendingUp, Share2, Plus, Eye } from "lucide-react";
+import { Users, Trophy, AlertTriangle, TrendingUp, Share2, Plus, Eye, Pencil, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/carteira")({ component: CarteiraPage });
@@ -101,7 +101,15 @@ function CarteiraPage() {
                 <TableCell>{c.parcelaMensal ? formatBRL(c.parcelaMensal) : "—"}</TableCell>
                 <TableCell>{statusBadge(c.statusPagamento)}</TableCell>
                 <TableCell>{oppBadge(c)}</TableCell>
-                <TableCell><Button size="icon" variant="ghost" className="h-7 w-7"><Eye className="h-3.5 w-3.5" /></Button></TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Ver" onClick={() => setSelected(c)}><Eye className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Editar" onClick={() => setSelected(c)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" title="Contatar" asChild>
+                      <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"><Phone className="h-3.5 w-3.5" /></a>
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

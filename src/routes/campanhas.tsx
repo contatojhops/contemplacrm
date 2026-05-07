@@ -125,7 +125,8 @@ function CampanhasPage() {
             {filtered.map((c) => {
               const taxa = c.leadsGerados > 0 ? (c.vendas / c.leadsGerados) * 100 : 0;
               const cplC = c.leadsGerados > 0 ? c.investimento / c.leadsGerados : 0;
-              const roi = c.investimento > 0 ? (((c.receita ?? 0) - c.investimento) / c.investimento) * 100 : (c.receita ?? 0) > 0 ? 100 : 0;
+              const isOrganico = c.investimento === 0;
+              const roi = isOrganico ? 0 : (((c.receita ?? 0) - c.investimento) / c.investimento) * 100;
               return (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.nome}</TableCell>
@@ -137,7 +138,7 @@ function CampanhasPage() {
                   <TableCell>{taxa.toFixed(2)}%</TableCell>
                   <TableCell>{formatBRL(cplC)}</TableCell>
                   <TableCell>{formatBRL(c.receita ?? 0)}</TableCell>
-                  <TableCell><span className={roi >= 0 ? "text-success" : "text-destructive"}>{roi.toFixed(2)}%</span></TableCell>
+                  <TableCell>{isOrganico ? <Badge className="bg-success text-success-foreground">Orgânico</Badge> : <span className={roi >= 0 ? "text-success" : "text-destructive"}>{roi.toFixed(2)}%</span>}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDetail(c)}><Eye className="h-3.5 w-3.5" /></Button>

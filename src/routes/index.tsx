@@ -51,7 +51,7 @@ function Dashboard() {
     monthStart.setHours(0, 0, 0, 0);
     const leadsMes = leads.filter((l) => new Date(l.criadoEm) >= monthStart);
     const quentes = leads.filter((l) => l.temperatura === "Quente");
-    const propostasMes = propostas.filter((p) => new Date(p.criadaEm) >= monthStart);
+    const propostasMes = propostas.filter((p) => new Date(p.criadaEm) >= monthStart && ["Enviada", "Em Análise", "Aprovada"].includes(p.status));
     const fechados = leads.filter((l) => l.etapa === "Fechado");
     const fechadosMes = fechados.filter((l) => new Date(l.criadoEm) >= monthStart);
     const ativos: Etapa[] = ["Novo Lead", "Contato Realizado", "Proposta Enviada", "Em Análise"];
