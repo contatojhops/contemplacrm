@@ -150,7 +150,7 @@ export interface Tarefa {
   lembrete?: boolean;
 }
 
-export type PropostaStatus = "Rascunho" | "Enviada" | "Em Análise" | "Aprovada" | "Aceita" | "Recusada";
+export type PropostaStatus = "Rascunho" | "Enviada" | "Em Análise" | "Aprovada" | "Recusada";
 
 export interface Proposta {
   id: string;
