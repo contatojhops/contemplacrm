@@ -159,6 +159,9 @@ function ClientesPage() {
             {filtered.map((c) => {
               const lead = leads.find((l) => l.id === c.id.replace("lead_", "")) ?? leads.find((l) => l.nome === c.nome);
               const score = lead ? calcScore(lead) : 70;
+              const perfil = c.perfil ?? (lead?.perfil as Cliente["perfil"] | undefined);
+              const temperatura = c.temperatura ?? lead?.temperatura;
+              const lastContactDate = c.ultimaInteracao ?? lead?.ultimoContato ?? c.fechadoEm;
               return (
                 <TableRow key={c.id} className="cursor-pointer">
                   <TableCell className="font-medium">
@@ -166,10 +169,10 @@ function ClientesPage() {
                   </TableCell>
                   <TableCell><Badge className={faseColor(c.fase)}>{c.fase ?? "—"}</Badge></TableCell>
                   <TableCell>{c.produto}</TableCell>
-                  <TableCell>{c.perfil ?? "—"}</TableCell>
-                  <TableCell>{c.temperatura ?? "—"}</TableCell>
+                  <TableCell>{perfil ?? "—"}</TableCell>
+                  <TableCell>{temperatura ?? "—"}</TableCell>
                   <TableCell><ScoreBadge score={score} /></TableCell>
-                  <TableCell>{c.ultimaInteracao ? new Date(c.ultimaInteracao).toLocaleDateString("pt-BR") : new Date(c.fechadoEm).toLocaleDateString("pt-BR")}</TableCell>
+                  <TableCell>{new Date(lastContactDate).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" asChild className="h-7 w-7">
