@@ -72,10 +72,14 @@ export function LeadCard({ lead, onEdit, onAdvance }: LeadCardProps) {
         </div>
       )}
       <div className="flex items-center gap-1 pt-1 border-t border-border" onPointerDown={(e) => e.stopPropagation()}>
-        <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
-          <a href={`https://wa.me/55${lead.telefone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
-            <MessageCircle className="h-3.5 w-3.5" />
-          </a>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7"
+          onClick={() => window.open(`https://wa.me/55${lead.telefone.replace(/\D/g, "")}`, "_blank")}
+          aria-label="WhatsApp"
+        >
+          <MessageCircle className="h-3.5 w-3.5" />
         </Button>
         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(lead)}>
           <Pencil className="h-3.5 w-3.5" />
