@@ -42,13 +42,14 @@ function ClientesPage() {
   const [fTemp, setFTemp] = useState("all");
 
   // Tratar leads também como clientes virtuais para visualização unificada (sem duplicar)
-  const todos: Cliente[] = useMemo(() => {
+  const todos: (Cliente & { lastContactDate: string })[] = useMemo(() => {
     const enriched = clientes.map((c) => ({
       ...c,
       fase: c.fase ?? (c.contemplado ? "Contemplado" as const : "Cliente Ativo" as const),
+      lastContactDate: c.ultimaInteracao ?? c.fechadoEm,
     }));
     const existingKeys = new Set(enriched.map((c) => `${c.nome.toLowerCase()}|${c.telefone}`));
-    const fromLeads: Cliente[] = leads
+    const fromLeads: (Cliente & { lastContactDate: string })[] = leads
       .filter((l) => !existingKeys.has(`${l.nome.toLowerCase()}|${l.telefone}`))
       .map((l) => ({
         id: `lead_${l.id}`,
@@ -66,6 +67,7 @@ function ClientesPage() {
         temperatura: l.temperatura,
         origem: l.origem,
         ultimaInteracao: l.ultimoContato,
+        lastContactDate: l.ultimoContato,
       }));
     return [...enriched, ...fromLeads];
   }, [clientes, leads]);
@@ -156,32 +158,29 @@ function ClientesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((c) => {
-              const lead = leads.find((l) => l.id === c.id.replace("lead_", "")) ?? leads.find((l) => l.nome === c.nome);
+            {filtered.map((item) => {
+              const lead = leads.find((l) => l.id === item.id.replace("lead_", "")) ?? leads.find((l) => l.nome === item.nome);
               const score = lead ? calcScore(lead) : 70;
-              const perfil = c.perfil ?? (lead?.perfil as Cliente["perfil"] | undefined);
-              const temperatura = c.temperatura ?? lead?.temperatura;
-              const lastContactDate = c.ultimaInteracao ?? lead?.ultimoContato ?? c.fechadoEm;
               return (
-                <TableRow key={c.id} className="cursor-pointer">
+                <TableRow key={item.id} className="cursor-pointer">
                   <TableCell className="font-medium">
-                    <Link to="/clientes/$id" params={{ id: c.id }} className="hover:underline">{c.nome}</Link>
+                    <Link to="/clientes/$id" params={{ id: item.id }} className="hover:underline">{item.nome}</Link>
                   </TableCell>
-                  <TableCell><Badge className={faseColor(c.fase)}>{c.fase ?? "—"}</Badge></TableCell>
-                  <TableCell>{c.produto}</TableCell>
-                  <TableCell>{perfil ?? "—"}</TableCell>
-                  <TableCell>{temperatura ?? "—"}</TableCell>
+                  <TableCell><Badge className={faseColor(item.fase)}>{item.fase ?? "—"}</Badge></TableCell>
+                  <TableCell>{item.produto}</TableCell>
+                  <TableCell>{item.perfil ?? "—"}</TableCell>
+                  <TableCell>{item.temperatura ?? "—"}</TableCell>
                   <TableCell><ScoreBadge score={score} /></TableCell>
-                  <TableCell>{new Date(lastContactDate).toLocaleDateString("pt-BR")}</TableCell>
+                  <TableCell>{new Date(item.lastContactDate).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" asChild className="h-7 w-7">
-                        <Link to="/clientes/$id" params={{ id: c.id }}><Eye className="h-3.5 w-3.5" /></Link>
+                        <Link to="/clientes/$id" params={{ id: item.id }}><Eye className="h-3.5 w-3.5" /></Link>
                       </Button>
                       <Button size="icon" variant="ghost" asChild className="h-7 w-7">
-                        <Link to="/clientes/$id" params={{ id: c.id }}><Pencil className="h-3.5 w-3.5" /></Link>
+                        <Link to="/clientes/$id" params={{ id: item.id }}><Pencil className="h-3.5 w-3.5" /></Link>
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(c.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(item.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
