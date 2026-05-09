@@ -28,7 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useLeads, usePropostas, useTarefas, useConfig } from "@/lib/store";
+import { useLeads, usePropostas, useTarefas, useConfig, useClientes } from "@/lib/store";
 import { calcScore, formatBRL } from "@/lib/scoring";
 import type { Etapa, Origem, Produto } from "@/lib/types";
 
