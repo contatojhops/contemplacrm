@@ -49,7 +49,7 @@ function ClientesPage() {
       lastContactDate: c.ultimaInteracao ?? c.fechadoEm,
     }));
     const existingKeys = new Set(enriched.map((c) => `${c.nome.toLowerCase()}|${c.telefone}`));
-    const fromLeads: Cliente[] = leads
+    const fromLeads: (Cliente & { lastContactDate: string })[] = leads
       .filter((l) => !existingKeys.has(`${l.nome.toLowerCase()}|${l.telefone}`))
       .map((l) => ({
         id: `lead_${l.id}`,
