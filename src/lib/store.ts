@@ -8,7 +8,7 @@ import {
   defaultConfig,
 } from "./mockData";
 
-const STORAGE_VERSION = "crm_initialized_v4";
+const STORAGE_VERSION = "crm_initialized_v5";
 
 export const useLeads = () => useLocalStorage(`${STORAGE_VERSION}.leads`, mockLeads);
 export const useClientes = () => useLocalStorage(`${STORAGE_VERSION}.clientes`, mockClientes);
