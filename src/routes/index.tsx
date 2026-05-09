@@ -28,7 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useLeads, usePropostas, useTarefas, useConfig } from "@/lib/store";
+import { useLeads, usePropostas, useTarefas, useConfig, useClientes } from "@/lib/store";
 import { calcScore, formatBRL } from "@/lib/scoring";
 import type { Etapa, Origem, Produto } from "@/lib/types";
 
@@ -44,21 +44,32 @@ function Dashboard() {
   const [propostas] = usePropostas();
   const [tarefas] = useTarefas();
   const [config] = useConfig();
+  const [clientes] = useClientes();
 
   const stats = useMemo(() => {
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-    const leadsMes = leads.filter((l) => new Date(l.criadoEm) >= monthStart);
+    const now = new Date();
+    const curMonth = now.getMonth();
+    const curYear = now.getFullYear();
+    const inCurMonth = (d: string | Date | undefined | null) => {
+      if (!d) return false;
+      const x = new Date(d);
+      return x.getMonth() === curMonth && x.getFullYear() === curYear;
+    };
+    const leadsMes = leads.filter((l) => inCurMonth(l.criadoEm));
     const quentes = leads.filter((l) => l.temperatura === "Quente");
-    const propostasMes = propostas.filter((p) => new Date(p.criadaEm) >= monthStart && ["Enviada", "Em Análise", "Aprovada"].includes(p.status));
-    const fechados = leads.filter((l) => l.etapa === "Fechado");
-    const fechadosMes = fechados.filter((l) => new Date(l.criadoEm) >= monthStart);
+    const propostasMes = propostas.filter((p) => inCurMonth(p.criadaEm) && ["Enviada", "Em Análise", "Aprovada"].includes(p.status));
+    const leadsFechadosMes = leads.filter((l) =>
+      (l.etapa === "Fechado" || (l.etapa === "Em Análise" && (l as any).fase === "Contemplado")) && inCurMonth(l.criadoEm)
+    );
+    const clientesContempladosMes = (clientes ?? []).filter((c: any) => c.contemplado === true && inCurMonth(c.contempladoEm ?? c.contemplationDate));
+    const fechadosMesCount = leadsFechadosMes.length + clientesContempladosMes.length;
     const ativos: Etapa[] = ["Novo Lead", "Contato Realizado", "Proposta Enviada", "Em Análise"];
     const pipelineValor = leads.filter((l) => ativos.includes(l.etapa)).reduce((s, l) => s + l.valorCarta, 0);
-    const receitaFechada = fechadosMes.reduce((s, l) => s + l.valorCarta, 0);
-    return { leadsMes: leadsMes.length, quentes: quentes.length, propostasMes: propostasMes.length, fechadosMes: fechadosMes.length, pipelineValor, receitaFechada };
-  }, [leads, propostas]);
+    const receitaFechada =
+      leadsFechadosMes.reduce((s, l) => s + l.valorCarta, 0) +
+      clientesContempladosMes.reduce((s: number, c: any) => s + (c.valorCarta ?? 0), 0);
+    return { leadsMes: leadsMes.length, quentes: quentes.length, propostasMes: propostasMes.length, fechadosMes: fechadosMesCount, pipelineValor, receitaFechada };
+  }, [leads, propostas, clientes]);
 
   const funnelData = ETAPAS.map((e) => ({ etapa: e, leads: leads.filter((l) => l.etapa === e).length }));
   const origemData = ORIGENS.map((o) => ({ name: o, value: leads.filter((l) => l.origem === o).length })).filter(d => d.value > 0);
