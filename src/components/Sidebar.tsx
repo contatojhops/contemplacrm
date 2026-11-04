@@ -1,4 +1,3 @@
-import { PipelineNavigation } from "./PipelineNavigation";
 import { featureEnabled } from "@/lib/features";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
@@ -15,7 +14,7 @@ import { useConfig } from "@/lib/store";
 
 export const items = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/leads", label: "Leads & Pipeline", icon: Target },
+  { to: "/pipeline/todos", label: "Leads & Pipeline", icon: Target },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/agenda", label: "Agenda & Tarefas", icon: Calendar },
   { to: "/propostas", label: "Propostas & Simulações", icon: FileText },
@@ -45,6 +44,7 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.filter(it => featureEnabled(it.to)).map((it) => {
           const active = it.to === "/" ? path === "/" : path.startsWith(it.to);
+          if(it.to === "/leads") return <PipelineNavigation key="pipelines" />;
           if(it.to === "/leads") return <PipelineNavigation key="pipelines" />;
           return (
             <Link
