@@ -14,7 +14,7 @@ import { pipelineDot } from './PipelineBadge';
 
 export function PipelineSelector({ pipelineId }: { pipelineId?: string }) {
   const [pipelines, setPipelines] = usePipelines();
-  const [leads] = useLeads();
+  const [leads, setLeads] = useLeads();
   const [, setTasks] = useTarefas();
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Pipeline | null>(null);
@@ -80,8 +80,13 @@ export function PipelineSelector({ pipelineId }: { pipelineId?: string }) {
             <Button variant="destructive" disabled={!target} onClick={() => {
               if (!removing) return;
               try {
-                const result = deletePipeline(pipelines, leads, tasks_unused_guard(), removing.id, target === 'delete' ? undefined : target);
-                setLeadsAfterDelete(result, setTasks, setPipelines, removing, target, navigate);
+                const result = deletePipeline(pipelines, leads, tasks, removing.id, target === 'delete' ? undefined : target);
+                setLeads(result.leads);
+                setTasks(result.tasks);
+                setPipelines(result.pipelines);
+                setRemoving(null);
+                navigate({ to: '/pipeline/todos' });
+                toast.success('Pipeline excluída');
               } catch (e) { toast.error(e instanceof Error ? e.message : 'Não foi possível excluir.'); }
             }}>Confirmar exclusão</Button>
           </DialogFooter>
@@ -90,6 +95,3 @@ export function PipelineSelector({ pipelineId }: { pipelineId?: string }) {
     </div>
   );
 }
-
-function tasks_unused_guard() { return [] as never[]; }
-function setLeadsAfterDelete(..._args: unknown[]) {}
