@@ -44,8 +44,6 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.filter(it => featureEnabled(it.to)).map((it) => {
           const active = it.to === "/" ? path === "/" : path.startsWith(it.to);
-          if(it.to === "/leads") return <PipelineNavigation key="pipelines" />;
-          if(it.to === "/leads") return <PipelineNavigation key="pipelines" />;
           return (
             <Link
               key={it.to}
