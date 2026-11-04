@@ -110,10 +110,10 @@ function Dashboard() {
   const metaPercent = config.metaMensal > 0 ? Math.min(100, (stats.receitaFechada / config.metaMensal) * 100) : 0;
 
   const kpis = [
-    { label: "Leads do Mês", value: stats.leadsMes, icon: UsersIcon, trend: "+12%", color: "text-chart-1" },
+    { label: "Leads do Mês", value: stats.leadsMes, icon: UsersIcon, color: "text-chart-1" },
     { label: "Em Proposta", value: stats.emProposta, icon: CheckCircle2, color: "text-chart-3" },
-    { label: "Vendas Fechadas", value: stats.fechadosMes, icon: CheckCircle2, trend: "+20%", color: "text-success" },
-    { label: "Pipeline Potencial", value: formatBRL(stats.pipelineValor), icon: DollarSign, trend: "+15%", color: "text-chart-2" },
+    { label: "Vendas Fechadas", value: stats.fechadosMes, icon: CheckCircle2, color: "text-success" },
+    { label: "Pipeline Potencial", value: formatBRL(stats.pipelineValor), icon: DollarSign, color: "text-chart-2" },
   ];
 
   return (

@@ -1,4 +1,5 @@
 import type { Lead } from "./types";
+import { localDate } from "./crm";
 
 export function calcScore(lead: Lead): number {
   let s = 0;
@@ -11,7 +12,7 @@ export function calcScore(lead: Lead): number {
   if (lead.temUrgencia) s += 20;
   if (lead.produto) s += 10;
   const ref = lead.ultimoContato || lead.criadoEm;
-  const dias = (Date.now() - new Date(ref).getTime()) / (1000 * 60 * 60 * 24);
+  const dias = (Date.now() - localDate(ref).getTime()) / (1000 * 60 * 60 * 24);
   if (dias > 7) s -= 30;
   return Math.max(0, Math.min(100, s));
 }
