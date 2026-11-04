@@ -19,6 +19,7 @@ import { useLeads, usePipelines, useTarefas } from "@/lib/store";
 import type { Lead, Etapa, Produto, Origem, Pipeline } from "@/lib/types";
 import { LeadCard, ScoreBadge, produtoColor } from "@/components/LeadCard";
 import { LeadModal } from "@/components/LeadModal";
+import { PipelineSelector } from "@/components/PipelineSelector";
 import { calcScore, formatBRL } from "@/lib/scoring";
 
 
@@ -58,7 +59,6 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const [pipelines] = usePipelines();
   const [,setTasks] = useTarefas();
   const pipeline = pipelines.find(p => p.id === pipelineId);
-  const [filterPipeline,setFilterPipeline] = useState("all");
   const [period,setPeriod] = useState<Period>("todos");
   const [transfer,setTransfer] = useState<Lead|null>(null);
   const [destination,setDestination] = useState("");
@@ -90,7 +90,6 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
 
   const filtered = useMemo(() => leads.filter((l) => {
     if (pipelineId && l.pipeline_id !== pipelineId) return false;
-    if (!pipelineId && filterPipeline !== "all" && l.pipeline_id !== filterPipeline) return false;
     const range = periodRange(period);
     if (!inRange(l.criadoEm,range.start,range.end)) return false;
     if (search && !l.nome.toLowerCase().includes(search.toLowerCase()) && !l.telefone.includes(search)) return false;
@@ -98,7 +97,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     if (filterOrigem !== "all" && l.origem !== filterOrigem) return false;
     if (filterEtapa !== "all" && l.etapa !== filterEtapa) return false;
     return true;
-  }), [leads, search, filterProduto, filterOrigem, filterEtapa, pipelineId, filterPipeline, period]);
+  }), [leads, search, filterProduto, filterOrigem, filterEtapa, pipelineId, period]);
 
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
@@ -134,7 +133,10 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     <div className="p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{pipeline?.nome ?? "Todos os leads"}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight">{pipeline?.nome ?? "Todos os leads"}</h1>
+            <PipelineSelector pipelineId={pipelineId} />
+          </div>
           <div className="flex flex-wrap items-center gap-2 mt-2"><PipelineBadge pipeline={pipeline} /><span className="text-sm text-muted-foreground">{summary.leads} leads · {summary.ativos} ativos · {formatBRL(summary.aberto)} em aberto · {summary.conversao.toFixed(1)}% conversão</span></div>
         </div>
         <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Exportar CSV</Button><Button disabled={pipeline?.arquivada} onClick={() => { setEditing(null); setModalOpen(true); }}>
@@ -148,7 +150,6 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Buscar por nome ou telefone" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          {!pipelineId && <Select value={filterPipeline} onValueChange={setFilterPipeline}><SelectTrigger aria-label="Filtrar pipeline" className="w-[160px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas pipelines</SelectItem>{pipelines.map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select>}
           <Select value={period} onValueChange={v=>setPeriod(v as Period)}><SelectTrigger aria-label="Período dos leads" className="w-[160px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todo o período</SelectItem><SelectItem value="mes">Mês atual</SelectItem><SelectItem value="30dias">Últimos 30 dias</SelectItem></SelectContent></Select>
           <Select value={filterProduto} onValueChange={setFilterProduto}>
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Produto" /></SelectTrigger>
