@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { localDate } from "@/lib/crm";
 import { FEATURES } from "@/lib/features";
 import { MobileNavigation } from "./MobileNavigation";
 import { useMemo, useState } from "react";
@@ -38,15 +39,15 @@ export function TopNavbar() {
     const list: { id: string; texto: string; tipo: string }[] = [];
     const today = new Date(); today.setHours(0, 0, 0, 0);
     leads.forEach((l) => {
-      if (l.proximoFollowUp && new Date(l.proximoFollowUp) < today && !["Fechado", "Perdido"].includes(l.etapa)) {
+      if (l.proximoFollowUp && localDate(l.proximoFollowUp) < today && !["Fechado", "Perdido"].includes(l.etapa)) {
         list.push({ id: `f${l.id}`, texto: `Follow-up com ${l.nome} está atrasado`, tipo: "atraso" });
       }
-      const dias = (Date.now() - new Date(l.ultimoContato).getTime()) / 86400000;
+      const dias = (Date.now() - localDate(l.ultimoContato).getTime()) / 86400000;
       if (dias > 7 && !["Fechado", "Perdido"].includes(l.etapa)) {
         list.push({ id: `c${l.id}`, texto: `${l.nome} sem contato há ${Math.floor(dias)} dias`, tipo: "contato" });
       }
     });
-    const tHoje = tarefas.filter((t) => !t.concluida && new Date(t.data).toDateString() === new Date().toDateString());
+    const tHoje = tarefas.filter((t) => !t.concluida && localDate(t.data).toDateString() === new Date().toDateString());
     if (tHoje.length > 0) list.push({ id: "thoje", texto: `Você tem ${tHoje.length} tarefa(s) para hoje`, tipo: "tarefa" });
     return list.slice(0, 10);
   }, [leads, tarefas]);
