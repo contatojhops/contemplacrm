@@ -13,6 +13,7 @@ export type ClienteFase = "Lead" | "Recuperação" | "Cliente Ativo" | "Contempl
 
 export interface Lead {
   id: string;
+  pipeline_id: string;
   nome: string;
   telefone: string;
   email: string;
@@ -139,6 +140,7 @@ export type TarefaPrioridade = "Alta" | "Média" | "Baixa";
 
 export interface Tarefa {
   id: string;
+  lead_id: string;
   titulo: string;
   tipo: TarefaTipo;
   cliente: string;
@@ -149,6 +151,17 @@ export interface Tarefa {
   prioridade?: TarefaPrioridade;
   descricao?: string;
   lembrete?: boolean;
+}
+
+export type PipelineCor = "azul" | "verde" | "amarelo" | "vermelho" | "roxo";
+export interface Pipeline {
+  id: string;
+  nome: string;
+  descricao?: string;
+  cor: PipelineCor;
+  ordem: number;
+  arquivada: boolean;
+  created_at: string;
 }
 
 export type PropostaStatus = "Rascunho" | "Enviada" | "Em Análise" | "Aprovada" | "Recusada";
