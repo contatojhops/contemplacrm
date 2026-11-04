@@ -22,12 +22,12 @@ export function TopNavbar() {
   const results = useMemo(() => {
     if (!q.trim()) return [];
     const s = q.toLowerCase();
-    const out: { tipo: string; nome: string; sub: string; to: string }[] = [];
+    const out: { tipo: string; nome: string; sub: string; to: string; id?: string }[] = [];
     leads.forEach((l) => {
-      if (l.nome.toLowerCase().includes(s) || l.telefone.includes(q)) out.push({ tipo: "Lead", nome: l.nome, sub: l.etapa, to: "/leads" });
+      if (l.nome.toLowerCase().includes(s) || l.telefone.includes(q)) out.push({ tipo: "Lead", nome: l.nome, sub: l.etapa, to: "/pipeline/$id", id: l.pipeline_id });
     });
     clientes.forEach((c) => {
-      if (c.nome.toLowerCase().includes(s) || c.telefone.includes(q) || (c.cpf ?? "").includes(q)) out.push({ tipo: "Cliente", nome: c.nome, sub: c.fase ?? "Cliente", to: `/clientes/${c.id}` });
+      if (c.nome.toLowerCase().includes(s) || c.telefone.includes(q) || (c.cpf ?? "").includes(q)) out.push({ tipo: "Cliente", nome: c.nome, sub: c.fase ?? "Cliente", to: "/clientes/$id", id: c.id });
     });
     propostas.filter(() => FEATURES.propostas).forEach((p) => {
       if (p.leadNome.toLowerCase().includes(s)) out.push({ tipo: "Proposta", nome: p.leadNome, sub: p.status, to: "/propostas" });
@@ -63,7 +63,7 @@ export function TopNavbar() {
         {results.length > 0 && (
           <div className="absolute top-full mt-1 left-0 right-0 bg-popover border rounded-md shadow-lg max-h-80 overflow-y-auto">
             {results.map((r, i) => (
-              <Button key={i} onClick={() => { navigate({ to: r.to }); setQ(""); }} className="w-full text-left px-3 py-2 hover:bg-accent flex items-center justify-between text-sm">
+              <Button key={i} variant="ghost" onClick={() => { if(r.to === '/pipeline/$id' && r.id) navigate({to:'/pipeline/$id',params:{id:r.id}}); else if(r.to === '/clientes/$id' && r.id) navigate({to:'/clientes/$id',params:{id:r.id}}); else navigate({to:'/propostas'}); setQ(""); }} className="w-full h-auto text-left px-3 py-2 hover:bg-accent flex items-center justify-between text-sm">
                 <div>
                   <div className="font-medium">{r.nome}</div>
                   <div className="text-xs text-muted-foreground">{r.tipo} · {r.sub}</div>
