@@ -15,7 +15,7 @@ import { pipelineDot } from './PipelineBadge';
 export function PipelineSelector({ pipelineId }: { pipelineId?: string }) {
   const [pipelines, setPipelines] = usePipelines();
   const [leads, setLeads] = useLeads();
-  const [, setTasks] = useTarefas();
+  const [tasks, setTasks] = useTarefas();
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Pipeline | null>(null);
   const [removing, setRemoving] = useState<Pipeline | null>(null);
