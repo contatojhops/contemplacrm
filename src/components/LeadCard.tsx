@@ -1,4 +1,4 @@
-import { stageDays } from "@/lib/crm";
+import { stageDays, localDate } from "@/lib/crm";
 import type { Lead, Produto } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ export function LeadCard({ lead, onEdit, onAdvance }: LeadCardProps) {
       {lead.proximoFollowUp && (
         <div className="flex items-center gap-1 text-[11px] text-foreground">
           <Calendar className="h-3 w-3" />
-          {new Date(lead.proximoFollowUp).toLocaleDateString("pt-BR")} · {lead.proximaAcaoTipo}
+          {localDate(lead.proximoFollowUp).toLocaleDateString("pt-BR")} · {lead.proximaAcaoTipo}
         </div>
       )}
       <div className="flex items-center gap-1 pt-1 border-t border-border" onPointerDown={(e) => e.stopPropagation()}>

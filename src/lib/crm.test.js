@@ -1,11 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { calcScore, scoreColor } from './scoring';
 import { changeStage, closedThisMonth, stageDays, whatsappUrl, localDate } from './crm';
 import { FEATURES } from './features';
 import { mockLeads, mockClientes, mockTarefas, mockPropostas, mockCampanhas } from './mockData';
-import type { Lead } from './types';
 
-const lead: Lead = { id: 'test', nome: 'Teste', telefone: '11987654321', email: '', produto: 'Imóvel', valorCarta: 100000, origem: 'WhatsApp', etapa: 'Novo Lead', diasNaEtapa: 0, criadoEm: new Date().toISOString(), ultimoContato: new Date().toISOString() };
+const lead = { id: 'test', nome: 'Teste', telefone: '11987654321', email: '', produto: 'Imóvel', valorCarta: 100000, origem: 'WhatsApp', etapa: 'Novo Lead', diasNaEtapa: 0, criadoEm: new Date().toISOString(), ultimoContato: new Date().toISOString() };
 describe('CRM rules', () => {
   it('awards 20 for income', () => expect(calcScore({ ...lead, rendaEstimada: 1 }) - calcScore(lead)).toBe(20));
   it('awards 15 for response', () => expect(calcScore({ ...lead, respondeuMensagem: true }) - calcScore(lead)).toBe(15));

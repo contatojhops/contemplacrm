@@ -1,5 +1,4 @@
 import { pageHead } from "@/lib/metadata";
-import { FEATURES } from "@/lib/features";
 import { closedThisMonth, whatsappUrl, localDate } from "@/lib/crm";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
@@ -31,7 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useLeads, usePropostas, useTarefas, useConfig, useClientes } from "@/lib/store";
+import { useLeads, useTarefas, useConfig } from "@/lib/store";
 import { calcScore, formatBRL } from "@/lib/scoring";
 import type { Etapa, Origem, Produto } from "@/lib/types";
 
@@ -44,10 +43,8 @@ const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--cha
 
 function Dashboard() {
   const [leads] = useLeads();
-  const [propostas] = usePropostas();
   const [tarefas, setTarefas] = useTarefas();
   const [config] = useConfig();
-  const [clientes] = useClientes();
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -59,14 +56,14 @@ function Dashboard() {
       return x.getMonth() === curMonth && x.getFullYear() === curYear;
     };
     const leadsMes = leads.filter((l) => inCurMonth(l.criadoEm));
-    const propostasMes = propostas.filter((p) => inCurMonth(p.criadaEm) && ["Enviada", "Em Análise", "Aprovada"].includes(p.status));
+    const emProposta = leads.filter(l => l.etapa === "Proposta Enviada").length;
     const leadsFechadosMes = closedThisMonth(leads, now);
     const fechadosMesCount = leadsFechadosMes.length;
     const ativos: Etapa[] = ["Novo Lead", "Contato Realizado", "Proposta Enviada", "Em Análise"];
     const pipelineValor = leads.filter((l) => ativos.includes(l.etapa)).reduce((s, l) => s + l.valorCarta, 0);
     const receitaFechada = leadsFechadosMes.reduce((s, l) => s + l.valorCarta, 0);
-    return { leadsMes: leadsMes.length, propostasMes: propostasMes.length, fechadosMes: fechadosMesCount, pipelineValor, receitaFechada };
-  }, [leads, propostas, clientes]);
+    return { leadsMes: leadsMes.length, emProposta, fechadosMes: fechadosMesCount, pipelineValor, receitaFechada };
+  }, [leads]);
 
   const funnelData = ETAPAS.map((e) => ({ etapa: e, leads: leads.filter((l) => l.etapa === e).length }));
   const origemData = ORIGENS.map((o) => ({ name: o, value: leads.filter((l) => l.origem === o).length })).filter(d => d.value > 0);
@@ -113,10 +110,10 @@ function Dashboard() {
   const metaPercent = config.metaMensal > 0 ? Math.min(100, (stats.receitaFechada / config.metaMensal) * 100) : 0;
 
   const kpis = [
-    { label: "Leads do Mês", value: stats.leadsMes, icon: UsersIcon, trend: "+12%", color: "text-chart-1" },
-    ...(FEATURES.propostas ? [{ label: "Propostas Enviadas", value: stats.propostasMes, icon: CheckCircle2, color: "text-chart-3" }] : []),
-    { label: "Vendas Fechadas", value: stats.fechadosMes, icon: CheckCircle2, trend: "+20%", color: "text-success" },
-    { label: "Pipeline Potencial", value: formatBRL(stats.pipelineValor), icon: DollarSign, trend: "+15%", color: "text-chart-2" },
+    { label: "Leads do Mês", value: stats.leadsMes, icon: UsersIcon, color: "text-chart-1" },
+    { label: "Em Proposta", value: stats.emProposta, icon: CheckCircle2, color: "text-chart-3" },
+    { label: "Vendas Fechadas", value: stats.fechadosMes, icon: CheckCircle2, color: "text-success" },
+    { label: "Pipeline Potencial", value: formatBRL(stats.pipelineValor), icon: DollarSign, color: "text-chart-2" },
   ];
 
   return (
@@ -126,7 +123,7 @@ function Dashboard() {
         <p className="text-muted-foreground">Visão geral da sua operação de vendas</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {kpis.map((k) => (
           <Card key={k.label}>
             <CardContent className="p-4">
