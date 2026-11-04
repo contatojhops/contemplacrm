@@ -1,8 +1,9 @@
+import { PipelineBadge } from "./PipelineBadge";
 import { stageDays, localDate } from "@/lib/crm";
-import type { Lead, Produto } from "@/lib/types";
+import type { Lead, Produto, Pipeline } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, ArrowRight, Calendar } from "lucide-react";
+import { Pencil, ArrowRight, Calendar, ArrowRightLeft } from "lucide-react";
 import { calcScore, scoreColor, formatBRL } from "@/lib/scoring";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -26,9 +27,12 @@ export interface LeadCardProps {
   lead: Lead;
   onEdit: (l: Lead) => void;
   onAdvance: (l: Lead) => void;
+  onTransfer?: (l: Lead) => void;
+  pipeline?: Pipeline;
+  showPipeline?: boolean;
 }
 
-export function LeadCard({ lead, onEdit, onAdvance }: LeadCardProps) {
+export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPipeline }: LeadCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -50,6 +54,7 @@ export function LeadCard({ lead, onEdit, onAdvance }: LeadCardProps) {
         <div className="font-semibold text-sm leading-tight">{lead.nome}</div>
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${scoreClass[c]}`}>{score}</span>
       </div>
+      {showPipeline && <PipelineBadge pipeline={pipeline} />}
       <div className="flex flex-wrap gap-1">
         <span className={`text-[10px] px-1.5 py-0.5 rounded border ${produtoColor[lead.produto]}`}>{lead.produto}</span>
       </div>
@@ -67,6 +72,7 @@ export function LeadCard({ lead, onEdit, onAdvance }: LeadCardProps) {
         <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Editar lead" title="Editar lead" onClick={() => onEdit(lead)}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
+        {onTransfer && <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Mover para outra pipeline" title="Mover para outra pipeline" onClick={()=>onTransfer(lead)}><ArrowRightLeft className="h-3.5 w-3.5" /></Button>}
         <Button size="icon" variant="ghost" className="h-7 w-7 ml-auto" aria-label="Avançar etapa" title="Avançar etapa" disabled={["Fechado", "Perdido"].includes(lead.etapa)} onClick={() => onAdvance(lead)}>
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>

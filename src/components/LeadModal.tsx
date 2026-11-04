@@ -1,3 +1,5 @@
+import { usePipelines } from "@/lib/store";
+import { GENERAL_ID } from "@/lib/pipelines";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -15,28 +17,32 @@ interface Props {
   open: boolean;
   onOpenChange: (b: boolean) => void;
   initial?: Lead | null;
+  defaultPipelineId?: string;
   onSave: (l: Lead) => void;
 }
 
-export function LeadModal({ open, onOpenChange, initial, onSave }: Props) {
+export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipelineId }: Props) {
+  const [pipelines] = usePipelines();
   const [form, setForm] = useState<Partial<Lead>>(initial ?? {
     nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0,
     origem: "WhatsApp", perfil: "", observacoes: "",
   });
 
   useEffect(() => {
-    if (open) setForm(initial ?? { nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0, origem: "WhatsApp", perfil: "", observacoes: "" });
-  }, [open, initial]);
+    if (open) setForm(initial ?? { pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID, nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0, origem: "WhatsApp", perfil: "", observacoes: "" });
+  }, [open, initial, defaultPipelineId]);
 
   const update = (patch: Partial<Lead>) => setForm((f) => ({ ...f, ...patch }));
 
   const submit = () => {
     if (!form.nome?.trim() || !form.telefone?.trim()) { toast.error("Preencha nome e telefone."); return; }
     if ((form.valorCarta ?? 0) < 0) { toast.error("Informe um valor válido."); return; }
+    if (!form.pipeline_id || !pipelines.some(p=>p.id===form.pipeline_id && (!p.arquivada || p.id===initial?.pipeline_id))) { toast.error("Selecione uma pipeline disponível."); return; }
     const now = new Date().toISOString();
     const lead: Lead = {
       ...initial,
       stage_changed_at: initial?.stage_changed_at ?? now,
+      pipeline_id: form.pipeline_id,
       id: initial?.id ?? `l_${Date.now()}`,
       nome: form.nome.trim(),
       telefone: form.telefone.trim(),
@@ -98,6 +104,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave }: Props) {
               <SelectContent>{ORIGENS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+          <div className="col-span-2"><Label>Pipeline</Label><Select value={form.pipeline_id} onValueChange={v=>update({pipeline_id:v})}><SelectTrigger aria-label="Pipeline do lead"><SelectValue placeholder="Selecione a pipeline" /></SelectTrigger><SelectContent>{pipelines.filter(p=>!p.arquivada || p.id===initial?.pipeline_id).map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select></div>
           <div className="col-span-2">
             <Label>Perfil do cliente</Label>
             <Input value={form.perfil ?? ""} onChange={(e) => update({ perfil: e.target.value })} />

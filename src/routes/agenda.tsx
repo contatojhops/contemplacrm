@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useTarefas, useClientes, useLeads } from "@/lib/store";
+import { useTarefas, useLeads } from "@/lib/store";
 import { Phone, MessageCircle, Users, Mail, MapPin, FileText, Repeat, MoreHorizontal, Plus, Calendar as CalendarIcon, List as ListIcon, Check, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Tarefa, TarefaTipo, TarefaPrioridade } from "@/lib/types";
@@ -92,9 +92,8 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
   initial: Tarefa | null;
   onSave: (t: Tarefa) => void;
 }) {
-  const [clientes] = useClientes();
   const [leads] = useLeads();
-  const people = [...clientes, ...leads.filter(l => !clientes.some(c => c.nome === l.nome && c.telefone === l.telefone))];
+  const [leadSearch,setLeadSearch] = useState("");
   const [form, setForm] = useState<Partial<Tarefa>>(initial ?? {
     titulo: "", tipo: "Follow-up", cliente: "", data: new Date().toISOString(), concluida: false, prioridade: "Média", descricao: "", lembrete: false,
   });
@@ -102,15 +101,17 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
   useEffect(() => { if (open) setForm(initial ?? { titulo: "", tipo: "Follow-up", cliente: "", data: new Date().toISOString(), concluida: false, prioridade: "Média" }); }, [initial, open]);
 
   const submit = () => {
-    if (!form.titulo || !form.cliente) { toast.error("Preencha título e cliente"); return; }
+    const linked = leads.find(l=>l.id===form.lead_id);
+    if (!form.titulo?.trim() || !linked) { toast.error("Preencha o título e selecione um lead"); return; }
     if (!form.data || !Number.isFinite(localDate(form.data).getTime())) { toast.error("Informe uma data válida"); return; }
     const t: Tarefa = {
       id: initial?.id ?? `t_${Date.now()}`,
       titulo: form.titulo,
       tipo: (form.tipo as TarefaTipo) ?? "Outro",
-      cliente: form.cliente,
-      clienteId: form.clienteId,
-      leadId: form.leadId,
+      cliente: linked.nome,
+      lead_id: linked.id,
+
+      leadId: linked.id,
       data: form.data ?? new Date().toISOString(),
       concluida: initial?.concluida ?? false,
       prioridade: form.prioridade as TarefaPrioridade,
@@ -133,16 +134,9 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
             <Input value={form.titulo ?? ""} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
           </div>
           <div>
-            <Label>Cliente</Label>
-            <Select value={form.cliente} onValueChange={(v) => {
-              const c = people.find((c) => c.nome === v);
-              setForm({ ...form, cliente: v, clienteId: clientes.some(p => p.id === c?.id) ? c?.id : undefined, leadId: leads.some(p => p.id === c?.id) ? c?.id : undefined });
-            }}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {people.map((c) => <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Lead</Label>
+            <Input aria-label="Buscar lead da tarefa" placeholder="Buscar por nome ou telefone" value={leadSearch} onChange={e=>setLeadSearch(e.target.value)} />
+            <Select value={form.lead_id} onValueChange={v=>setForm({...form,lead_id:v})}><SelectTrigger aria-label="Lead da tarefa"><SelectValue placeholder="Selecione um lead" /></SelectTrigger><SelectContent>{leads.filter(l=>l.nome.toLowerCase().includes(leadSearch.toLowerCase())||l.telefone.includes(leadSearch)).map(l=><SelectItem key={l.id} value={l.id}>{l.nome} · {l.telefone}</SelectItem>)}</SelectContent></Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -241,7 +235,9 @@ function CalendarView({ tarefas, onDayClick }: { tarefas: Tarefa[]; onDayClick: 
 }
 
 function AgendaPage() {
-  const [tarefas, setTarefas] = useTarefas();
+  const [savedTasks, setTarefas] = useTarefas();
+  const [leads] = useLeads();
+  const tarefas = savedTasks.map(t=>({...t,cliente:leads.find(l=>l.id===t.lead_id)?.nome ?? t.cliente}));
   const [view, setView] = useState<"calendario" | "lista">("lista");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Tarefa | null>(null);
