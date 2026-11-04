@@ -1,7 +1,8 @@
-import type { Lead, Produto, Temperatura } from "@/lib/types";
+import { stageDays } from "@/lib/crm";
+import type { Lead, Produto } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Pencil, ArrowRight, Calendar } from "lucide-react";
+import { Pencil, ArrowRight, Calendar } from "lucide-react";
 import { calcScore, scoreColor, formatBRL } from "@/lib/scoring";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -13,12 +14,6 @@ const produtoColor: Record<Produto, string> = {
   "Moto": "bg-yellow-500/15 text-yellow-800 border-yellow-500/30",
   "Investimento": "bg-green-500/15 text-green-700 border-green-500/30",
   "Outros": "bg-gray-500/15 text-gray-700 border-gray-500/30",
-};
-
-const tempIcon: Record<Temperatura, string> = {
-  Frio: "🔵",
-  Morno: "🟡",
-  Quente: "🔴",
 };
 
 const scoreClass = {
@@ -57,14 +52,11 @@ export function LeadCard({ lead, onEdit, onAdvance }: LeadCardProps) {
       </div>
       <div className="flex flex-wrap gap-1">
         <span className={`text-[10px] px-1.5 py-0.5 rounded border ${produtoColor[lead.produto]}`}>{lead.produto}</span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded border border-border bg-accent">
-          {tempIcon[lead.temperatura]} {lead.temperatura}
-        </span>
       </div>
       <div className="text-xs text-muted-foreground">
         {lead.origem} · {formatBRL(lead.valorCarta)}
       </div>
-      <div className="text-[11px] text-muted-foreground">{lead.diasNaEtapa} dias nesta etapa</div>
+      <div className="text-[11px] text-muted-foreground">{stageDays(lead)} dias nesta etapa</div>
       {lead.proximoFollowUp && (
         <div className="flex items-center gap-1 text-[11px] text-foreground">
           <Calendar className="h-3 w-3" />
@@ -72,19 +64,10 @@ export function LeadCard({ lead, onEdit, onAdvance }: LeadCardProps) {
         </div>
       )}
       <div className="flex items-center gap-1 pt-1 border-t border-border" onPointerDown={(e) => e.stopPropagation()}>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-7 w-7"
-          onClick={() => window.open(`https://wa.me/55${lead.telefone.replace(/\D/g, "")}`, "_blank")}
-          aria-label="WhatsApp"
-        >
-          <MessageCircle className="h-3.5 w-3.5" />
-        </Button>
-        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onEdit(lead)}>
+        <Button size="icon" variant="ghost" className="h-7 w-7" aria-label="Editar lead" title="Editar lead" onClick={() => onEdit(lead)}>
           <Pencil className="h-3.5 w-3.5" />
         </Button>
-        <Button size="icon" variant="ghost" className="h-7 w-7 ml-auto" onClick={() => onAdvance(lead)}>
+        <Button size="icon" variant="ghost" className="h-7 w-7 ml-auto" aria-label="Avançar etapa" title="Avançar etapa" disabled={["Fechado", "Perdido"].includes(lead.etapa)} onClick={() => onAdvance(lead)}>
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>

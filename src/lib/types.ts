@@ -1,6 +1,5 @@
 export type Produto = "Imóvel" | "Veículo" | "Serviço" | "Moto" | "Investimento" | "Outros";
 export type Origem = "Meta Ads" | "Instagram" | "WhatsApp" | "Indicação" | "Orgânico" | "Outros";
-export type Temperatura = "Frio" | "Morno" | "Quente";
 export type Etapa =
   | "Novo Lead"
   | "Contato Realizado"
@@ -20,7 +19,6 @@ export interface Lead {
   produto: Produto;
   valorCarta: number;
   origem: Origem;
-  temperatura: Temperatura;
   etapa: Etapa;
   perfil?: string;
   observacoes?: string;
@@ -33,6 +31,10 @@ export interface Lead {
   proximaAcaoTipo?: string;
   diasNaEtapa: number;
   criadoEm: string;
+  stage_changed_at?: string;
+  closed_at?: string;
+  motivoPerda?: string;
+  detalhesCliente?: Partial<Cliente>;
 }
 
 export type InteracaoTipo = "WhatsApp" | "Ligação" | "Reunião" | "Instagram DM" | "E-mail" | "Presencial";
@@ -120,7 +122,6 @@ export interface Cliente {
   origem?: Origem;
   perfil?: ClientePerfil;
   fase?: ClienteFase;
-  temperatura?: Temperatura;
   tags?: string[];
   ultimaInteracao?: string;
   prazoMeses?: number;
