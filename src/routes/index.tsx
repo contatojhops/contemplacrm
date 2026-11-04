@@ -1,281 +1,51 @@
-import { pageHead } from "@/lib/metadata";
-import { closedThisMonth, whatsappUrl, localDate } from "@/lib/crm";
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
-import {
-  TrendingUp,
-  Users as UsersIcon,
-
-
-  CheckCircle2,
-  DollarSign,
-  MessageCircle,
-} from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  LineChart,
-  Line,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { useLeads, useTarefas, useConfig } from "@/lib/store";
-import { calcScore, formatBRL } from "@/lib/scoring";
-import type { Etapa, Origem, Produto } from "@/lib/types";
-
-export const Route = createFileRoute("/")({ head: () => pageHead("Dashboard", "Indicadores e acompanhamento das vendas de consórcio."), component: Dashboard });
-
-const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
-const ORIGENS: Origem[] = ["Meta Ads", "Instagram", "WhatsApp", "Indicação", "Orgânico", "Outros"];
-const ETAPAS: Etapa[] = ["Novo Lead", "Contato Realizado", "Proposta Enviada", "Em Análise", "Fechado", "Perdido"];
-const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "oklch(0.6 0.05 250)"];
-
-function Dashboard() {
-  const [leads] = useLeads();
-  const [tarefas, setTarefas] = useTarefas();
-  const [config] = useConfig();
-
-  const stats = useMemo(() => {
-    const now = new Date();
-    const curMonth = now.getMonth();
-    const curYear = now.getFullYear();
-    const inCurMonth = (d: string | Date | undefined | null) => {
-      if (!d) return false;
-      const x = localDate(d);
-      return x.getMonth() === curMonth && x.getFullYear() === curYear;
-    };
-    const leadsMes = leads.filter((l) => inCurMonth(l.criadoEm));
-    const emProposta = leads.filter(l => l.etapa === "Proposta Enviada").length;
-    const leadsFechadosMes = closedThisMonth(leads, now);
-    const fechadosMesCount = leadsFechadosMes.length;
-    const ativos: Etapa[] = ["Novo Lead", "Contato Realizado", "Proposta Enviada", "Em Análise"];
-    const pipelineValor = leads.filter((l) => ativos.includes(l.etapa)).reduce((s, l) => s + l.valorCarta, 0);
-    const receitaFechada = leadsFechadosMes.reduce((s, l) => s + l.valorCarta, 0);
-    return { leadsMes: leadsMes.length, emProposta, fechadosMes: fechadosMesCount, pipelineValor, receitaFechada };
-  }, [leads]);
-
-  const funnelData = ETAPAS.map((e) => ({ etapa: e, leads: leads.filter((l) => l.etapa === e).length }));
-  const origemData = ORIGENS.map((o) => ({ name: o, value: leads.filter((l) => l.origem === o).length })).filter(d => d.value > 0);
-  const produtoData = PRODUTOS.map((p) => ({ name: p, leads: leads.filter((l) => l.produto === p).length }));
-
-  const evolucaoData = useMemo(() => {
-    const out: { mes: string; leads: number; vendas: number }[] = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const next = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const ls = leads.filter((l) => {
-        const c = localDate(l.criadoEm);
-        return c >= d && c < next;
-      });
-      out.push({
-        mes: d.toLocaleDateString("pt-BR", { month: "short" }),
-        leads: ls.length,
-        vendas: closedThisMonth(leads, d).length,
-      });
-    }
-    return out;
-  }, [leads]);
-
-  const conversaoData = PRODUTOS.map((p) => {
-    const total = leads.filter((l) => l.produto === p).length;
-    const fechados = leads.filter((l) => l.produto === p && l.etapa === "Fechado").length;
-    return { name: p, taxa: total ? Math.round((fechados / total) * 100) : 0 };
-  });
-
-  const semContato = leads
-    .filter((l) => {
-      const dias = (Date.now() - localDate(l.ultimoContato).getTime()) / 86400000;
-      return dias > 7 && !["Fechado", "Perdido"].includes(l.etapa);
-    })
-    .slice(0, 5);
-
-  const followupsHoje = tarefas.filter((t) => {
-    const d = localDate(t.data);
-    const today = new Date();
-    return !t.concluida && d.toDateString() === today.toDateString();
-  }).slice(0, 5);
-
-  const metaPercent = config.metaMensal > 0 ? Math.min(100, (stats.receitaFechada / config.metaMensal) * 100) : 0;
-
-  const kpis = [
-    { label: "Leads do Mês", value: stats.leadsMes, icon: UsersIcon, color: "text-chart-1" },
-    { label: "Em Proposta", value: stats.emProposta, icon: CheckCircle2, color: "text-chart-3" },
-    { label: "Vendas Fechadas", value: stats.fechadosMes, icon: CheckCircle2, color: "text-success" },
-    { label: "Pipeline Potencial", value: formatBRL(stats.pipelineValor), icon: DollarSign, color: "text-chart-2" },
-  ];
-
-  return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral da sua operação de vendas</p>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {kpis.map((k) => (
-          <Card key={k.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <k.icon className={`h-5 w-5 ${k.color}`} />
-
-              </div>
-              <div className="mt-2 text-2xl font-bold">{k.value}</div>
-              <div className="text-xs text-muted-foreground mt-1">{k.label}</div>
-            </CardContent>
-          </Card>
-        ))}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <DollarSign className="h-5 w-5 text-primary" />
-              <span className="text-xs font-semibold">{Math.round(metaPercent)}%</span>
-            </div>
-            <div className="mt-2 text-sm font-bold">Meta Mensal</div>
-            <Progress value={metaPercent} className="mt-2 h-2" />
-            <div className="text-xs text-muted-foreground mt-1">{formatBRL(stats.receitaFechada)} / {formatBRL(config.metaMensal)}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Funil de Vendas</CardTitle></CardHeader>
-          <CardContent className="h-72">
-            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={funnelData} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis type="number" stroke="var(--muted-foreground)" />
-                <YAxis type="category" dataKey="etapa" stroke="var(--muted-foreground)" width={140} />
-                <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }} />
-                <Bar dataKey="leads" fill="var(--chart-1)" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Leads por Origem</CardTitle></CardHeader>
-          <CardContent className="h-72">
-            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={origemData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
-                  {origemData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Leads por Produto</CardTitle></CardHeader>
-          <CardContent className="h-72">
-            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={produtoData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="name" stroke="var(--muted-foreground)" />
-                <YAxis stroke="var(--muted-foreground)" />
-                <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }} />
-                <Bar dataKey="leads" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Evolução Mensal</CardTitle></CardHeader>
-          <CardContent className="h-72">
-            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={evolucaoData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="mes" stroke="var(--muted-foreground)" />
-                <YAxis stroke="var(--muted-foreground)" />
-                <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }} />
-                <Legend />
-                <Line type="monotone" dataKey="leads" stroke="var(--chart-1)" strokeWidth={2} name="Leads Gerados" />
-                <Line type="monotone" dataKey="vendas" stroke="var(--chart-5)" strokeWidth={2} name="Vendas Fechadas" />
-              </LineChart>
-            </ResponsiveContainer>}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader><CardTitle className="text-base">Taxa de Conversão por Produto</CardTitle></CardHeader>
-          <CardContent className="h-64">
-            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={conversaoData} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis type="number" unit="%" stroke="var(--muted-foreground)" />
-                <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" width={100} />
-                <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }} />
-                <Bar dataKey="taxa" fill="var(--chart-3)" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Leads sem contato +7 dias</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {semContato.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lead pendente 🎉</p>}
-            {semContato.map((l) => (
-              <div key={l.id} className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-accent flex items-center justify-center text-sm font-semibold">
-                  {l.nome[0]}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{l.nome}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {localDate(l.ultimoContato).toLocaleDateString("pt-BR")}
-                  </div>
-                </div>
-                <Button size="sm" variant="outline" asChild>
-                  <a href={whatsappUrl(l.telefone)} target="_blank" rel="noreferrer">
-                    <MessageCircle className="h-3 w-3 mr-1" />Contatar
-                  </a>
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Follow-ups de Hoje</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {followupsHoje.length === 0 && <p className="text-sm text-muted-foreground">Sem tarefas para hoje</p>}
-            {followupsHoje.map((t) => (
-              <div key={t.id} className="flex items-center gap-3">
-                <div className="text-xs font-mono bg-accent rounded px-2 py-1">
-                  {localDate(t.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{t.cliente}</div>
-                  <div className="text-xs text-muted-foreground">{t.tipo}</div>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => setTarefas(prev => prev.map(task => task.id === t.id ? { ...task, concluida: true } : task))}><CheckCircle2 className="h-3 w-3 mr-1" />Concluir</Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-
-      </div>
-    </div>
-  );
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import { Users, Target, FileText, CheckCircle2, DollarSign, MessageCircle } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '@/components/ui/table';
+import { PipelineBadge, pipelineFill } from '@/components/PipelineBadge';
+import { useLeads, usePipelines, useTarefas, useConfig } from '@/lib/store';
+import { ETAPAS, activeLead, periodRange, inRange, metrics, type Period } from '@/lib/pipelines';
+import { localDate, whatsappUrl } from '@/lib/crm';
+import { formatBRL } from '@/lib/scoring';
+import { pageHead } from '@/lib/metadata';
+import type { Lead } from '@/lib/types';
+export const Route = createFileRoute('/')({ head:()=>pageHead('Dashboard consolidado','Indicadores e resultados de todas as pipelines de consórcio.'),component:Dashboard });
+const COLORS=['var(--primary)','var(--success)','var(--warning)','var(--destructive)','var(--chart-3)','var(--muted-foreground)'];
+const chartTooltip={background:'var(--card)',border:'1px solid var(--border)',color:'var(--foreground)'};
+function trend(current:number, previous:number, all:boolean){if(all)return 'Sem comparação';if(previous===0)return current===0?'0% vs. anterior':'Novo no período';return `${current>=previous?'+':''}${((current-previous)/previous*100).toFixed(1)}% vs. anterior`;}
+function ChartBox({title,empty,children,wide=false}:{title:string;empty:boolean;children:React.ReactNode;wide?:boolean}){return <Card className={wide?'lg:col-span-2':''}><CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent className="h-72">{empty?<div className="flex h-full items-center justify-center text-sm text-muted-foreground">Nenhum dado neste período</div>:children}</CardContent></Card>;}
+function Dashboard(){
+ const [leads]=useLeads();const [pipelines]=usePipelines();const [tasks]=useTarefas();const [config]=useConfig();
+ const [pipelineId,setPipelineId]=useState('all');const [period,setPeriod]=useState<Period>('mes');
+ const now=new Date();const range=periodRange(period,now);
+ const base=leads.filter(l=>pipelineId==='all'||l.pipeline_id===pipelineId);
+ const cohort=base.filter(l=>inRange(l.criadoEm,range.start,range.end));
+ const current=metrics(base,range.start,range.end);const previous=metrics(base,range.previousStart,range.previousEnd);
+ const summaryRows=pipelines.filter(p=>pipelineId==='all'||p.id===pipelineId).map(p=>({...p,...metrics(base.filter(l=>l.pipeline_id===p.id),range.start,range.end)}));
+ const kpis=[{label:'Leads no período',key:'leads' as const,icon:Users,color:'text-primary',money:false},{label:'Leads ativos',key:'ativos' as const,icon:Target,color:'text-primary',money:false},{label:'Em Proposta',key:'emProposta' as const,icon:FileText,color:'text-warning',money:false},{label:'Vendas fechadas',key:'fechados' as const,icon:CheckCircle2,color:'text-success',money:false},{label:'Valor em aberto',key:'aberto' as const,icon:DollarSign,color:'text-primary',money:true}];
+ const funnel=ETAPAS.map(etapa=>({etapa,leads:cohort.filter(l=>l.etapa===etapa).length}));
+ const origins=[...new Set(cohort.map(l=>l.origem))].map(name=>({name,value:cohort.filter(l=>l.origem===name).length}));
+ const products=[...new Set(cohort.map(l=>l.produto))].map(name=>{const rows=cohort.filter(l=>l.produto===name);return {name,leads:rows.length,taxa:rows.length?rows.filter(l=>l.etapa==='Fechado').length/rows.length*100:0};});
+ const evolution=Array.from({length:6},(_,i)=>{const start=new Date(now.getFullYear(),now.getMonth()-5+i,1);const end=new Date(now.getFullYear(),now.getMonth()-4+i,1);end.setMilliseconds(-1);return {mes:start.toLocaleDateString('pt-BR',{month:'short'}),leads:base.filter(l=>inRange(l.criadoEm,start,end)&&inRange(l.criadoEm,range.start,range.end)).length,vendas:base.filter(l=>l.etapa==='Fechado'&&inRange(l.closed_at,start,end)&&inRange(l.closed_at,range.start,range.end)).length};});
+ const goal=config.metaMensal>0?Math.min(100,current.fechado/config.metaMensal*100):0;
+ const today=new Date(now);today.setHours(0,0,0,0);const tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);
+ const stale=cohort.filter(l=>activeLead(l)&&(now.getTime()-localDate(l.ultimoContato).getTime())>7*86400000);
+ const due=tasks.filter(t=>!t.concluida&&localDate(t.data)<tomorrow&&cohort.some(l=>l.id===t.lead_id));
+ const noNext=cohort.filter(l=>['Proposta Enviada','Em Análise'].includes(l.etapa)&&!tasks.some(t=>t.lead_id===l.id&&!t.concluida&&localDate(t.data)>=now)&&!(l.proximoFollowUp&&localDate(l.proximoFollowUp)>=now)&&!(l.detalhesCliente?.proximaAcao?.data&&localDate(l.detalhesCliente.proximaAcao.data)>=today));
+ const alertItem=(l:Lead,sub:string,key=l.id)=><div key={key} className="flex items-center gap-2"><div className="flex-1 min-w-0"><Link to="/clientes/$id" params={{id:`lead_${l.id}`}} className="text-sm font-medium hover:underline">{l.nome}</Link><div className="text-xs text-muted-foreground mb-1">{sub}</div><PipelineBadge pipeline={pipelines.find(p=>p.id===l.pipeline_id)} /></div><Button asChild variant="outline" size="icon" title={`WhatsApp de ${l.nome}`} aria-label={`WhatsApp de ${l.nome}`}><a href={whatsappUrl(l.telefone)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 text-success" /></a></Button></div>;
+ return <div className="p-6 space-y-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-bold">Dashboard</h1><p className="text-muted-foreground">Visão consolidada da sua operação de vendas</p></div><div className="flex flex-wrap gap-2"><Select value={pipelineId} onValueChange={setPipelineId}><SelectTrigger aria-label="Pipeline do dashboard" className="w-[180px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todas as pipelines</SelectItem>{pipelines.map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select><Select value={period} onValueChange={v=>setPeriod(v as Period)}><SelectTrigger aria-label="Período do dashboard" className="w-[170px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="mes">Mês atual</SelectItem><SelectItem value="30dias">Últimos 30 dias</SelectItem><SelectItem value="todos">Todo o período</SelectItem></SelectContent></Select></div></div>
+ <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">{kpis.map(k=><Card key={k.key}><CardContent className="p-4"><k.icon className={`h-5 w-5 ${k.color}`} /><div data-testid={`kpi-${k.key}`} className="mt-2 text-xl font-bold break-words">{k.money?formatBRL(current[k.key]):current[k.key]}</div><div className="text-xs text-muted-foreground mt-1">{k.label}</div><div className="text-[10px] text-muted-foreground mt-2">{trend(current[k.key],previous[k.key],period==='todos')}</div></CardContent></Card>)}<Card><CardContent className="p-4"><DollarSign className="h-5 w-5 text-success" /><div className="text-xl font-bold mt-2">{Math.round(goal)}%</div><div className="text-xs text-muted-foreground mt-1">Meta mensal</div><Progress value={goal} className="h-2 mt-2" /><div className="text-[10px] text-muted-foreground mt-2">{formatBRL(current.fechado)} / {formatBRL(config.metaMensal)}</div><div className="text-[10px] text-muted-foreground">{trend(current.fechado,previous.fechado,period==='todos')}</div></CardContent></Card></div>
+ <Card><CardHeader><CardTitle className="text-base">Visão por Pipeline</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow>{['Pipeline','Leads','Ativos','Fechados','Perdidos','Conversão','Valor em aberto','Valor fechado'].map(h=><TableHead key={h}>{h}</TableHead>)}</TableRow></TableHeader><TableBody>{summaryRows.map(p=><TableRow key={p.id}><TableCell><Link to="/pipeline/$id" params={{id:p.id}}><PipelineBadge pipeline={p} /></Link></TableCell><TableCell>{p.leads}</TableCell><TableCell>{p.ativos}</TableCell><TableCell className="text-success">{p.fechados}</TableCell><TableCell className="text-destructive">{p.perdidos}</TableCell><TableCell>{p.conversao.toFixed(1)}%</TableCell><TableCell>{formatBRL(p.aberto)}</TableCell><TableCell>{formatBRL(p.fechado)}</TableCell></TableRow>)}</TableBody></Table><div className="h-60 mt-4">{current.leads===0&&current.fechados===0?<div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead ainda — cadastre o primeiro</div>:<ResponsiveContainer width="100%" height="100%"><BarChart data={summaryRows}><CartesianGrid stroke="var(--border)" strokeDasharray="3 3"/><XAxis dataKey="nome" stroke="var(--muted-foreground)" /><YAxis allowDecimals={false} stroke="var(--muted-foreground)"/><Tooltip contentStyle={chartTooltip}/><Bar dataKey="leads" name="Leads" radius={[4,4,0,0]}>{summaryRows.map(p=><Cell key={p.id} fill={pipelineFill[p.cor]}/>)}</Bar></BarChart></ResponsiveContainer>}</div></CardContent></Card>
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><ChartBox title="Funil de vendas" empty={!cohort.length}><ResponsiveContainer width="100%" height="100%"><BarChart data={funnel} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/><XAxis type="number" allowDecimals={false} stroke="var(--muted-foreground)"/><YAxis type="category" dataKey="etapa" width={125} stroke="var(--muted-foreground)"/><Tooltip contentStyle={chartTooltip}/><Bar dataKey="leads" name="Leads" radius={[0,4,4,0]}>{funnel.map((f,i)=><Cell key={f.etapa} fill={f.etapa==='Fechado'?'var(--success)':f.etapa==='Perdido'?'var(--destructive)':COLORS[i%COLORS.length]}/>)}</Bar></BarChart></ResponsiveContainer></ChartBox>
+ <ChartBox title="Leads por origem" empty={!cohort.length}><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={origins} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} isAnimationActive={false}>{origins.map((o,i)=><Cell key={o.name} fill={COLORS[i%COLORS.length]}/>)}</Pie><Tooltip contentStyle={chartTooltip}/><Legend/></PieChart></ResponsiveContainer></ChartBox>
+ <ChartBox title="Leads por produto" empty={!cohort.length}><ResponsiveContainer width="100%" height="100%"><BarChart data={products}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/><XAxis dataKey="name" stroke="var(--muted-foreground)"/><YAxis allowDecimals={false} stroke="var(--muted-foreground)"/><Tooltip contentStyle={chartTooltip}/><Bar dataKey="leads" name="Leads" fill="var(--primary)" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></ChartBox>
+ <ChartBox title="Evolução mensal — últimos 6 meses" empty={!evolution.some(e=>e.leads||e.vendas)}><ResponsiveContainer width="100%" height="100%"><LineChart data={evolution}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/><XAxis dataKey="mes" stroke="var(--muted-foreground)"/><YAxis allowDecimals={false} stroke="var(--muted-foreground)"/><Tooltip contentStyle={chartTooltip}/><Legend/><Line dataKey="leads" name="Leads criados" stroke="var(--primary)" strokeWidth={2}/><Line dataKey="vendas" name="Vendas fechadas" stroke="var(--success)" strokeWidth={2}/></LineChart></ResponsiveContainer></ChartBox>
+ <ChartBox title="Taxa de conversão por produto" empty={!cohort.length} wide><ResponsiveContainer width="100%" height="100%"><BarChart data={products} layout="vertical"><CartesianGrid strokeDasharray="3 3" stroke="var(--border)"/><XAxis type="number" domain={[0,100]} unit="%" stroke="var(--muted-foreground)"/><YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)"/><Tooltip contentStyle={chartTooltip}/><Bar dataKey="taxa" name="Conversão (%)" fill="var(--success)" radius={[0,4,4,0]}/></BarChart></ResponsiveContainer></ChartBox></div>
+ <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><Card><CardHeader><CardTitle className="text-base">Leads sem contato há +7 dias</CardTitle></CardHeader><CardContent className="space-y-4">{!stale.length&&<p className="text-sm text-muted-foreground">Nenhum contato pendente</p>}{stale.slice(0,8).map(l=>alertItem(l,localDate(l.ultimoContato).toLocaleDateString('pt-BR')))}</CardContent></Card><Card><CardHeader><CardTitle className="text-base">Follow-ups de hoje e atrasados</CardTitle></CardHeader><CardContent className="space-y-4">{!due.length&&<p className="text-sm text-muted-foreground">Sem follow-ups pendentes</p>}{due.slice(0,8).map(t=>{const l=cohort.find(l=>l.id===t.lead_id);return l?alertItem(l,`${localDate(t.data)<today?'Atrasado · ':''}${t.titulo} · ${localDate(t.data).toLocaleDateString('pt-BR')}`,t.id):null;})}</CardContent></Card><Card><CardHeader><CardTitle className="text-base">Leads avançados sem próximo passo</CardTitle></CardHeader><CardContent className="space-y-4">{!noNext.length&&<p className="text-sm text-muted-foreground">Todos os próximos passos em dia</p>}{noNext.slice(0,8).map(l=>alertItem(l,l.etapa))}</CardContent></Card></div>
+ </div>;
 }
-
