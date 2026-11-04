@@ -1,18 +1,12 @@
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import {
-  mockLeads,
-  mockClientes,
-  mockTarefas,
-  mockPropostas,
-  mockCampanhas,
-  defaultConfig,
-} from "./mockData";
+import { defaultConfig } from "./mockData";
+import type { Lead, Cliente, Tarefa, Proposta, Campanha } from "./types";
 
 const STORAGE_VERSION = "crm_initialized_v5";
 
-export const useLeads = () => useLocalStorage(`${STORAGE_VERSION}.leads`, mockLeads);
-export const useClientes = () => useLocalStorage(`${STORAGE_VERSION}.clientes`, mockClientes);
-export const useTarefas = () => useLocalStorage(`${STORAGE_VERSION}.tarefas`, mockTarefas);
-export const usePropostas = () => useLocalStorage(`${STORAGE_VERSION}.propostas`, mockPropostas);
-export const useCampanhas = () => useLocalStorage(`${STORAGE_VERSION}.campanhas`, mockCampanhas);
+export const useLeads = () => useLocalStorage<Lead[]>(`${STORAGE_VERSION}.leads`, []);
+export const useClientes = () => useLocalStorage<Cliente[]>(`${STORAGE_VERSION}.clientes`, []);
+export const useTarefas = () => useLocalStorage<Tarefa[]>(`${STORAGE_VERSION}.tarefas`, []);
+export const usePropostas = () => useLocalStorage<Proposta[]>(`${STORAGE_VERSION}.propostas`, []);
+export const useCampanhas = () => useLocalStorage<Campanha[]>(`${STORAGE_VERSION}.campanhas`, []);
 export const useConfig = () => useLocalStorage(`${STORAGE_VERSION}.config`, defaultConfig);

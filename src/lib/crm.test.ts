@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'bun:test';
 import { calcScore, scoreColor } from './scoring';
 import { changeStage, closedThisMonth, stageDays, whatsappUrl, localDate } from './crm';
 import { FEATURES } from './features';
