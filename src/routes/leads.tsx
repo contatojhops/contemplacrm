@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/metadata";
 import { changeStage, DELETE_CONFIRMATION, localDate } from "@/lib/crm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +19,7 @@ import { LeadCard, ScoreBadge, produtoColor } from "@/components/LeadCard";
 import { LeadModal } from "@/components/LeadModal";
 import { calcScore, formatBRL } from "@/lib/scoring";
 
-export const Route = createFileRoute("/leads")({ component: LeadsPage });
+export const Route = createFileRoute("/leads")({ head: () => pageHead("Leads e Pipeline", "Oportunidades e etapas das vendas de consórcio."), component: LeadsPage });
 
 const ETAPAS: Etapa[] = ["Novo Lead", "Contato Realizado", "Proposta Enviada", "Em Análise", "Fechado", "Perdido"];
 

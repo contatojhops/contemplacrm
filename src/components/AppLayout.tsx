@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useConfig } from "@/lib/store";
 import { Outlet } from "@tanstack/react-router";
 import { Sidebar } from "./Sidebar";
 import { TopNavbar } from "./TopNavbar";
@@ -5,6 +7,8 @@ import { FloatingActionButton } from "./FloatingActionButton";
 import { Toaster } from "@/components/ui/sonner";
 
 export function AppLayout() {
+  const [config] = useConfig();
+  useEffect(() => { document.documentElement.classList.toggle("dark", !!config.darkMode); }, [config.darkMode]);
   return (
     <div className="flex min-h-screen w-full bg-background">
       <Sidebar />

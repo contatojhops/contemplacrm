@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/metadata";
 import { FEATURES } from "@/lib/features";
 import { DELETE_CONFIRMATION, whatsappUrl, localDate, localInput } from "@/lib/crm";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -19,7 +20,7 @@ import { calcScore, formatBRL } from "@/lib/scoring";
 import { toast } from "sonner";
 import type { Cliente, ClienteFase, ClientePerfil, Documento, Interacao, InteracaoResultado, InteracaoTipo, ObjecaoRegistrada, Origem, Produto } from "@/lib/types";
 
-export const Route = createFileRoute("/clientes/$id")({ component: ClienteProfilePage });
+export const Route = createFileRoute("/clientes/$id")({ head: () => pageHead("Perfil do cliente", "Dados, interações e próximas ações do cliente."), component: ClienteProfilePage });
 
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
 const ORIGENS: Origem[] = ["Meta Ads", "Instagram", "WhatsApp", "Indicação", "Orgânico", "Outros"];

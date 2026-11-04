@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/metadata";
 import { DELETE_CONFIRMATION, localDate } from "@/lib/crm";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
@@ -16,7 +17,7 @@ import { toast } from "sonner";
 import type { Lead } from "@/lib/types";
 import type { Cliente, ClienteFase, ClientePerfil, Produto } from "@/lib/types";
 
-export const Route = createFileRoute("/clientes/")({ component: ClientesPage });
+export const Route = createFileRoute("/clientes/")({ head: () => pageHead("Clientes", "Base de clientes e contatos do Consórcio CRM."), component: ClientesPage });
 
 const FASES: (ClienteFase | "Todos")[] = ["Todos", "Lead", "Recuperação", "Cliente Ativo", "Contemplado"];
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];

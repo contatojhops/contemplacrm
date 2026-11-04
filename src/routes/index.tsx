@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/metadata";
 import { FEATURES } from "@/lib/features";
 import { closedThisMonth, whatsappUrl, localDate } from "@/lib/crm";
 import { createFileRoute } from "@tanstack/react-router";
@@ -34,7 +35,7 @@ import { useLeads, usePropostas, useTarefas, useConfig, useClientes } from "@/li
 import { calcScore, formatBRL } from "@/lib/scoring";
 import type { Etapa, Origem, Produto } from "@/lib/types";
 
-export const Route = createFileRoute("/")({ component: Dashboard });
+export const Route = createFileRoute("/")({ head: () => pageHead("Dashboard", "Indicadores e acompanhamento das vendas de consórcio."), component: Dashboard });
 
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
 const ORIGENS: Origem[] = ["Meta Ads", "Instagram", "WhatsApp", "Indicação", "Orgânico", "Outros"];

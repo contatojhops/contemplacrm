@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { pageHead } from "@/lib/metadata";
+import { FEATURES } from "@/lib/features";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +15,7 @@ import type { Cliente, StatusPagamento, Indicacao } from "@/lib/types";
 import { Users, Trophy, AlertTriangle, TrendingUp, Share2, Plus, Eye, Pencil, Phone } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/carteira")({ component: CarteiraPage });
+export const Route = createFileRoute("/carteira")({ head: () => pageHead("Carteira Ativa", "Relacionamento e acompanhamento dos cotistas."), beforeLoad: () => { if (!FEATURES.carteira) throw redirect({ to: "/" }); }, component: CarteiraPage });
 
 function statusBadge(s?: StatusPagamento) {
   if (s === "Em Dia") return <Badge className="bg-success text-success-foreground">✅ Em Dia</Badge>;

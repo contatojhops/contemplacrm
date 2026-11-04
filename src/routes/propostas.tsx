@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { pageHead } from "@/lib/metadata";
+import { FEATURES } from "@/lib/features";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +20,7 @@ import { formatBRL } from "@/lib/scoring";
 import type { Produto, Proposta, PropostaStatus } from "@/lib/types";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/propostas")({ component: PropostasPage });
+export const Route = createFileRoute("/propostas")({ head: () => pageHead("Propostas e Simulações", "Propostas e simulações de consórcio."), beforeLoad: () => { if (!FEATURES.propostas) throw redirect({ to: "/" }); }, component: PropostasPage });
 
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
 const STATUS: PropostaStatus[] = ["Rascunho", "Enviada", "Em Análise", "Aprovada", "Recusada"];
