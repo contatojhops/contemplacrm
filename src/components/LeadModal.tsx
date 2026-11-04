@@ -1,15 +1,15 @@
-import { useState } from "react";
+import { toast } from "sonner";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Lead, Produto, Origem, Temperatura } from "@/lib/types";
+import type { Lead, Produto, Origem } from "@/lib/types";
 
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
 const ORIGENS: Origem[] = ["Meta Ads", "Instagram", "WhatsApp", "Indicação", "Orgânico", "Outros"];
-const TEMPS: Temperatura[] = ["Frio", "Morno", "Quente"];
 
 interface Props {
   open: boolean;
@@ -21,23 +21,29 @@ interface Props {
 export function LeadModal({ open, onOpenChange, initial, onSave }: Props) {
   const [form, setForm] = useState<Partial<Lead>>(initial ?? {
     nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0,
-    origem: "WhatsApp", temperatura: "Morno", perfil: "", observacoes: "",
+    origem: "WhatsApp", perfil: "", observacoes: "",
   });
+
+  useEffect(() => {
+    if (open) setForm(initial ?? { nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0, origem: "WhatsApp", perfil: "", observacoes: "" });
+  }, [open, initial]);
 
   const update = (patch: Partial<Lead>) => setForm((f) => ({ ...f, ...patch }));
 
   const submit = () => {
-    if (!form.nome || !form.telefone) return;
+    if (!form.nome?.trim() || !form.telefone?.trim()) { toast.error("Preencha nome e telefone."); return; }
+    if ((form.valorCarta ?? 0) < 0) { toast.error("Informe um valor válido."); return; }
     const now = new Date().toISOString();
     const lead: Lead = {
+      ...initial,
+      stage_changed_at: initial?.stage_changed_at ?? now,
       id: initial?.id ?? `l_${Date.now()}`,
-      nome: form.nome!,
-      telefone: form.telefone!,
+      nome: form.nome.trim(),
+      telefone: form.telefone.trim(),
       email: form.email ?? "",
       produto: form.produto as Produto,
       valorCarta: Number(form.valorCarta) || 0,
       origem: form.origem as Origem,
-      temperatura: form.temperatura as Temperatura,
       etapa: initial?.etapa ?? "Novo Lead",
       perfil: form.perfil,
       observacoes: form.observacoes,
@@ -90,13 +96,6 @@ export function LeadModal({ open, onOpenChange, initial, onSave }: Props) {
             <Select value={form.origem} onValueChange={(v) => update({ origem: v as Origem })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{ORIGENS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Temperatura</Label>
-            <Select value={form.temperatura} onValueChange={(v) => update({ temperatura: v as Temperatura })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{TEMPS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="col-span-2">

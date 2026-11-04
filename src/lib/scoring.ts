@@ -10,8 +10,6 @@ export function calcScore(lead: Lead): number {
   // tag "tem urgência"
   if (lead.temUrgencia) s += 20;
   if (lead.produto) s += 10;
-  if (lead.temperatura === "Quente") s += 10;
-  if (lead.temperatura === "Frio") s -= 20;
   const ref = lead.ultimoContato || lead.criadoEm;
   const dias = (Date.now() - new Date(ref).getTime()) / (1000 * 60 * 60 * 24);
   if (dias > 7) s -= 30;

@@ -1,3 +1,5 @@
+import { pageHead } from "@/lib/metadata";
+import { DELETE_CONFIRMATION, localDate } from "@/lib/crm";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
@@ -13,14 +15,13 @@ import { ScoreBadge } from "@/components/LeadCard";
 import { LeadModal } from "@/components/LeadModal";
 import { toast } from "sonner";
 import type { Lead } from "@/lib/types";
-import type { Cliente, ClienteFase, ClientePerfil, Produto, Temperatura } from "@/lib/types";
+import type { Cliente, ClienteFase, ClientePerfil, Produto } from "@/lib/types";
 
-export const Route = createFileRoute("/clientes/")({ component: ClientesPage });
+export const Route = createFileRoute("/clientes/")({ head: () => pageHead("Clientes", "Base de clientes e contatos do Consórcio CRM."), component: ClientesPage });
 
 const FASES: (ClienteFase | "Todos")[] = ["Todos", "Lead", "Recuperação", "Cliente Ativo", "Contemplado"];
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
 const PERFIS: ClientePerfil[] = ["Pessoa Física", "Profissional Liberal", "Empresário", "Investidor"];
-const TEMPS: Temperatura[] = ["Frio", "Morno", "Quente"];
 
 function faseColor(f?: ClienteFase) {
   switch (f) {
@@ -39,7 +40,6 @@ function ClientesPage() {
   const [fase, setFase] = useState<typeof FASES[number]>("Todos");
   const [fProduto, setFProduto] = useState("all");
   const [fPerfil, setFPerfil] = useState("all");
-  const [fTemp, setFTemp] = useState("all");
 
   // Tratar leads também como clientes virtuais para visualização unificada (sem duplicar)
   const todos: (Cliente & { lastContactDate: string })[] = useMemo(() => {
@@ -52,6 +52,7 @@ function ClientesPage() {
     const fromLeads: (Cliente & { lastContactDate: string })[] = leads
       .filter((l) => !existingKeys.has(`${l.nome.toLowerCase()}|${l.telefone}`))
       .map((l) => ({
+        ...l.detalhesCliente,
         id: `lead_${l.id}`,
         nome: l.nome,
         telefone: l.telefone,
@@ -62,9 +63,8 @@ function ClientesPage() {
         parcelasTotais: 0,
         contemplado: false,
         fechadoEm: l.criadoEm,
-        fase: "Lead",
+        fase: l.detalhesCliente?.fase ?? (l.etapa === "Perdido" ? "Recuperação" : "Lead"),
         perfil: l.perfil as Cliente["perfil"],
-        temperatura: l.temperatura,
         origem: l.origem,
         ultimaInteracao: l.ultimoContato,
         lastContactDate: l.ultimoContato,
@@ -78,14 +78,13 @@ function ClientesPage() {
     if (fase !== "Todos" && c.fase !== fase) return false;
     if (fProduto !== "all" && c.produto !== fProduto) return false;
     if (fPerfil !== "all" && c.perfil !== fPerfil) return false;
-    if (fTemp !== "all" && c.temperatura !== fTemp) return false;
     return true;
   });
 
   const remove = (id: string) => {
-    if (id.startsWith("lead_")) { toast.error("Exclua o lead na página de Leads"); return; }
-    if (!confirm("Excluir cliente?")) return;
-    setClientes((p) => p.filter((c) => c.id !== id));
+    if (!confirm(DELETE_CONFIRMATION)) return;
+    if (id.startsWith("lead_")) setLeads(p => p.filter(l => l.id !== id.slice(5)));
+    else setClientes((p) => p.filter((c) => c.id !== id));
     toast.success("Cliente excluído");
   };
 
@@ -133,13 +132,6 @@ function ClientesPage() {
               {PERFIS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={fTemp} onValueChange={setFTemp}>
-            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Temperatura" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {TEMPS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-            </SelectContent>
-          </Select>
         </div>
       </Card>
 
@@ -151,13 +143,13 @@ function ClientesPage() {
               <TableHead>Fase</TableHead>
               <TableHead>Produto</TableHead>
               <TableHead>Perfil</TableHead>
-              <TableHead>Temperatura</TableHead>
               <TableHead>Score</TableHead>
               <TableHead>Última Interação</TableHead>
               <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
+            {filtered.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum cliente encontrado</TableCell></TableRow>}
             {filtered.map((item) => {
               const lead = leads.find((l) => l.id === item.id.replace("lead_", "")) ?? leads.find((l) => l.nome === item.nome);
               const score = lead ? calcScore(lead) : 70;
@@ -169,9 +161,8 @@ function ClientesPage() {
                   <TableCell><Badge className={faseColor(item.fase)}>{item.fase ?? "—"}</Badge></TableCell>
                   <TableCell>{item.produto}</TableCell>
                   <TableCell>{item.perfil ?? "—"}</TableCell>
-                  <TableCell>{item.temperatura ?? "—"}</TableCell>
                   <TableCell><ScoreBadge score={score} /></TableCell>
-                  <TableCell>{new Date(item.lastContactDate).toLocaleDateString("pt-BR")}</TableCell>
+                  <TableCell>{localDate(item.lastContactDate).toLocaleDateString("pt-BR")}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" asChild className="h-7 w-7">

@@ -1,21 +1,25 @@
+import { pageHead } from "@/lib/metadata";
+import { changeStage, DELETE_CONFIRMATION, localDate } from "@/lib/crm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Plus, Search, LayoutGrid, List as ListIcon } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLeads } from "@/lib/store";
-import type { Lead, Etapa, Produto, Origem, Temperatura } from "@/lib/types";
+import type { Lead, Etapa, Produto, Origem } from "@/lib/types";
 import { LeadCard, ScoreBadge, produtoColor } from "@/components/LeadCard";
 import { LeadModal } from "@/components/LeadModal";
 import { calcScore, formatBRL } from "@/lib/scoring";
 
-export const Route = createFileRoute("/leads")({ component: LeadsPage });
+export const Route = createFileRoute("/leads")({ head: () => pageHead("Leads e Pipeline", "Oportunidades e etapas das vendas de consórcio."), component: LeadsPage });
 
 const ETAPAS: Etapa[] = ["Novo Lead", "Contato Realizado", "Proposta Enviada", "Em Análise", "Fechado", "Perdido"];
 
@@ -54,10 +58,23 @@ function LeadsPage() {
   const [search, setSearch] = useState("");
   const [filterProduto, setFilterProduto] = useState<string>("all");
   const [filterOrigem, setFilterOrigem] = useState<string>("all");
-  const [filterTemp, setFilterTemp] = useState<string>("all");
   const [filterEtapa, setFilterEtapa] = useState<string>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Lead | null>(null);
+
+  const [lossLead, setLossLead] = useState<Lead | null>(null);
+  const [lossReason, setLossReason] = useState("");
+  const move = (lead: Lead, target: Etapa) => {
+    if (lead.etapa === target) return;
+    if (target === "Perdido") { setLossReason(""); setLossLead(lead); return; }
+    setLeads(prev => prev.map(l => l.id === lead.id ? changeStage(l, target) : l));
+    toast.success(`Movido para ${target}`);
+  };
+  const remove = (lead: Lead) => {
+    if (!confirm(DELETE_CONFIRMATION)) return;
+    setLeads(prev => prev.filter(l => l.id !== lead.id));
+    toast.success("Lead excluído");
+  };
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -65,10 +82,9 @@ function LeadsPage() {
     if (search && !l.nome.toLowerCase().includes(search.toLowerCase()) && !l.telefone.includes(search)) return false;
     if (filterProduto !== "all" && l.produto !== filterProduto) return false;
     if (filterOrigem !== "all" && l.origem !== filterOrigem) return false;
-    if (filterTemp !== "all" && l.temperatura !== filterTemp) return false;
     if (filterEtapa !== "all" && l.etapa !== filterEtapa) return false;
     return true;
-  }), [leads, search, filterProduto, filterOrigem, filterTemp, filterEtapa]);
+  }), [leads, search, filterProduto, filterOrigem, filterEtapa]);
 
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
@@ -77,7 +93,8 @@ function LeadsPage() {
     const overId = String(over.id);
     const target = ETAPAS.includes(overId as Etapa) ? (overId as Etapa) : leads.find((l) => l.id === overId)?.etapa;
     if (!target) return;
-    setLeads((prev) => prev.map((l) => l.id === leadId && l.etapa !== target ? { ...l, etapa: target, diasNaEtapa: 0 } : l));
+    const lead = leads.find(l => l.id === leadId);
+    if (lead) move(lead, target);
   };
 
   const handleSave = (lead: Lead) => {
@@ -92,8 +109,7 @@ function LeadsPage() {
   const handleAdvance = (lead: Lead) => {
     const idx = ETAPAS.indexOf(lead.etapa);
     if (idx < 0 || idx >= ETAPAS.length - 2) return;
-    setLeads((prev) => prev.map((l) => l.id === lead.id ? { ...l, etapa: ETAPAS[idx + 1], diasNaEtapa: 0 } : l));
-    toast.success(`Movido para ${ETAPAS[idx + 1]}`);
+    move(lead, ETAPAS[idx + 1]);
   };
 
   return (
@@ -126,13 +142,6 @@ function LeadsPage() {
             <SelectContent>
               <SelectItem value="all">Todas Origens</SelectItem>
               {(["Meta Ads","Instagram","WhatsApp","Indicação","Orgânico","Outros"] as Origem[]).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterTemp} onValueChange={setFilterTemp}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Temperatura" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {(["Frio","Morno","Quente"] as Temperatura[]).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterEtapa} onValueChange={setFilterEtapa}>
@@ -174,7 +183,6 @@ function LeadsPage() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Produto</TableHead>
-                <TableHead>Temperatura</TableHead>
                 <TableHead>Origem</TableHead>
                 <TableHead>Etapa</TableHead>
                 <TableHead>Score</TableHead>
@@ -184,18 +192,19 @@ function LeadsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {filtered.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum lead encontrado</TableCell></TableRow>}
               {filtered.map((l) => (
                 <TableRow key={l.id}>
                   <TableCell className="font-medium">{l.nome}</TableCell>
                   <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${produtoColor[l.produto]}`}>{l.produto}</span></TableCell>
-                  <TableCell>{l.temperatura}</TableCell>
                   <TableCell>{l.origem}</TableCell>
-                  <TableCell>{l.etapa}</TableCell>
+                  <TableCell><Select value={l.etapa} onValueChange={v => move(l, v as Etapa)}><SelectTrigger aria-label={`Etapa de ${l.nome}`}><SelectValue /></SelectTrigger><SelectContent>{ETAPAS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select></TableCell>
                   <TableCell><ScoreBadge score={calcScore(l)} /></TableCell>
-                  <TableCell>{l.proximoFollowUp ? new Date(l.proximoFollowUp).toLocaleDateString("pt-BR") : "—"}</TableCell>
+                  <TableCell>{l.proximoFollowUp ? localDate(l.proximoFollowUp).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell>{formatBRL(l.valorCarta)}</TableCell>
                   <TableCell>
                     <Button size="sm" variant="outline" onClick={() => { setEditing(l); setModalOpen(true); }}>Editar</Button>
+                    <Button size="icon" variant="ghost" aria-label={`Excluir ${l.nome}`} onClick={() => remove(l)}><Trash2 className="h-4 w-4" /></Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -204,6 +213,7 @@ function LeadsPage() {
         </Card>
       )}
 
+      <Dialog open={!!lossLead} onOpenChange={open => !open && setLossLead(null)}><DialogContent><DialogHeader><DialogTitle>Motivo da perda</DialogTitle></DialogHeader><Textarea aria-label="Motivo da perda" value={lossReason} onChange={e => setLossReason(e.target.value)} /><DialogFooter><Button variant="outline" onClick={() => setLossLead(null)}>Cancelar</Button><Button onClick={() => { if (!lossLead || !lossReason.trim()) { toast.error("Informe o motivo da perda."); return; } setLeads(prev => prev.map(l => l.id === lossLead.id ? changeStage(l, "Perdido", lossReason) : l)); setLossLead(null); toast.success("Lead marcado como perdido"); }}>Confirmar perda</Button></DialogFooter></DialogContent></Dialog>
       <LeadModal open={modalOpen} onOpenChange={setModalOpen} initial={editing} onSave={handleSave} />
     </div>
   );

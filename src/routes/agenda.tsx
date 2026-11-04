@@ -1,5 +1,7 @@
+import { pageHead } from "@/lib/metadata";
+import { DELETE_CONFIRMATION, localDate, localInput } from "@/lib/crm";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,12 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useTarefas, useClientes } from "@/lib/store";
+import { useTarefas, useClientes, useLeads } from "@/lib/store";
 import { Phone, MessageCircle, Users, Mail, MapPin, FileText, Repeat, MoreHorizontal, Plus, Calendar as CalendarIcon, List as ListIcon, Check, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Tarefa, TarefaTipo, TarefaPrioridade } from "@/lib/types";
 
-export const Route = createFileRoute("/agenda")({ component: AgendaPage });
+export const Route = createFileRoute("/agenda")({ head: () => pageHead("Agenda e Tarefas", "Compromissos e tarefas do consultor de consórcio."), component: AgendaPage });
 
 const tipoIcon: Record<TarefaTipo, typeof Phone> = {
   "Ligação": Phone,
@@ -51,7 +53,7 @@ function TaskCard({ t, onToggle, onEdit, onDelete, onReschedule }: {
   onReschedule: (t: Tarefa) => void;
 }) {
   const Icon = tipoIcon[t.tipo] ?? MoreHorizontal;
-  const overdue = !t.concluida && new Date(t.data) < new Date() && !isSameDay(new Date(t.data), new Date());
+  const overdue = !t.concluida && localDate(t.data) < new Date() && !isSameDay(localDate(t.data), new Date());
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="border border-border rounded-lg p-3 bg-card flex items-start gap-3">
@@ -66,7 +68,7 @@ function TaskCard({ t, onToggle, onEdit, onDelete, onReschedule }: {
         </div>
         <div className="text-xs text-muted-foreground">{t.tipo} · {t.cliente}</div>
         <div className="text-xs text-muted-foreground">
-          {new Date(t.data).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+          {localDate(t.data).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
         </div>
         {t.descricao && (
           <div className="text-xs cursor-pointer" onClick={() => setExpanded(!expanded)}>
@@ -74,10 +76,10 @@ function TaskCard({ t, onToggle, onEdit, onDelete, onReschedule }: {
           </div>
         )}
         <div className="flex gap-1 pt-1">
-          <Button size="sm" variant="outline" onClick={() => onToggle(t.id)}><Check className="h-3 w-3 mr-1" />Concluir</Button>
-          <Button size="sm" variant="ghost" onClick={() => onEdit(t)}><Pencil className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => onReschedule(t)}><Repeat className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" onClick={() => onDelete(t.id)}><Trash2 className="h-3 w-3" /></Button>
+          <Button size="sm" variant="outline" onClick={() => onToggle(t.id)}><Check className="h-3 w-3 mr-1" />{t.concluida ? "Reabrir" : "Concluir"}</Button>
+          <Button size="sm" variant="ghost" aria-label="Editar tarefa" title="Editar tarefa" onClick={() => onEdit(t)}><Pencil className="h-3 w-3" /></Button>
+          <Button size="sm" variant="ghost" aria-label="Reagendar tarefa" title="Reagendar tarefa" onClick={() => onReschedule(t)}><Repeat className="h-3 w-3" /></Button>
+          <Button size="sm" variant="ghost" aria-label="Excluir tarefa" title="Excluir tarefa" onClick={() => onDelete(t.id)}><Trash2 className="h-3 w-3" /></Button>
         </div>
       </div>
     </div>
@@ -91,18 +93,24 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
   onSave: (t: Tarefa) => void;
 }) {
   const [clientes] = useClientes();
+  const [leads] = useLeads();
+  const people = [...clientes, ...leads.filter(l => !clientes.some(c => c.nome === l.nome && c.telefone === l.telefone))];
   const [form, setForm] = useState<Partial<Tarefa>>(initial ?? {
     titulo: "", tipo: "Follow-up", cliente: "", data: new Date().toISOString(), concluida: false, prioridade: "Média", descricao: "", lembrete: false,
   });
 
+  useEffect(() => { if (open) setForm(initial ?? { titulo: "", tipo: "Follow-up", cliente: "", data: new Date().toISOString(), concluida: false, prioridade: "Média" }); }, [initial, open]);
+
   const submit = () => {
     if (!form.titulo || !form.cliente) { toast.error("Preencha título e cliente"); return; }
+    if (!form.data || !Number.isFinite(localDate(form.data).getTime())) { toast.error("Informe uma data válida"); return; }
     const t: Tarefa = {
       id: initial?.id ?? `t_${Date.now()}`,
-      titulo: form.titulo!,
+      titulo: form.titulo,
       tipo: (form.tipo as TarefaTipo) ?? "Outro",
-      cliente: form.cliente!,
+      cliente: form.cliente,
       clienteId: form.clienteId,
+      leadId: form.leadId,
       data: form.data ?? new Date().toISOString(),
       concluida: initial?.concluida ?? false,
       prioridade: form.prioridade as TarefaPrioridade,
@@ -113,7 +121,7 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
     onOpenChange(false);
   };
 
-  const dataValue = form.data ? new Date(form.data).toISOString().slice(0, 16) : "";
+  const dataValue = form.data ? localInput(form.data) : "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -127,12 +135,12 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
           <div>
             <Label>Cliente</Label>
             <Select value={form.cliente} onValueChange={(v) => {
-              const c = clientes.find((c) => c.nome === v);
-              setForm({ ...form, cliente: v, clienteId: c?.id });
+              const c = people.find((c) => c.nome === v);
+              setForm({ ...form, cliente: v, clienteId: clientes.some(p => p.id === c?.id) ? c?.id : undefined, leadId: leads.some(p => p.id === c?.id) ? c?.id : undefined });
             }}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
-                {clientes.map((c) => <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>)}
+                {people.map((c) => <SelectItem key={c.id} value={c.nome}>{c.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -154,7 +162,7 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
           </div>
           <div>
             <Label>Data e hora</Label>
-            <Input type="datetime-local" value={dataValue} onChange={(e) => setForm({ ...form, data: new Date(e.target.value).toISOString() })} />
+            <Input type="datetime-local" value={dataValue} onChange={(e) => setForm({ ...form, data: e.target.value ? new Date(e.target.value).toISOString() : "" })} />
           </div>
           <div>
             <Label>Descrição</Label>
@@ -188,7 +196,7 @@ function CalendarView({ tarefas, onDayClick }: { tarefas: Tarefa[]; onDayClick: 
   const weekdays = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
   const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-  const dotsFor = (d: Date) => tarefas.filter((t) => isSameDay(new Date(t.data), d));
+  const dotsFor = (d: Date) => tarefas.filter((t) => isSameDay(localDate(t.data), d));
 
   return (
     <Card>
@@ -218,7 +226,7 @@ function CalendarView({ tarefas, onDayClick }: { tarefas: Tarefa[]; onDayClick: 
                 <div className="font-medium">{d.getDate()}</div>
                 <div className="flex flex-wrap gap-0.5 mt-1">
                   {ts.slice(0, 4).map((t) => {
-                    const overdue = !t.concluida && new Date(t.data) < new Date() && !isSameDay(new Date(t.data), new Date());
+                    const overdue = !t.concluida && localDate(t.data) < new Date() && !isSameDay(localDate(t.data), new Date());
                     const cls = t.concluida ? "bg-success" : overdue ? "bg-destructive" : t.prioridade === "Alta" ? "bg-warning" : "bg-primary";
                     return <span key={t.id} className={`h-1.5 w-1.5 rounded-full ${cls}`} />;
                   })}
@@ -240,7 +248,7 @@ function AgendaPage() {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
   const toggle = (id: string) => setTarefas((prev) => prev.map((t) => t.id === id ? { ...t, concluida: !t.concluida } : t));
-  const remove = (id: string) => setTarefas((prev) => prev.filter((t) => t.id !== id));
+  const remove = (id: string) => { if (confirm(DELETE_CONFIRMATION)) { setTarefas(prev => prev.filter(t => t.id !== id)); toast.success("Tarefa excluída"); } };
   const save = (t: Tarefa) => {
     setTarefas((prev) => {
       const ex = prev.some((p) => p.id === t.id);
@@ -250,7 +258,8 @@ function AgendaPage() {
     setEditing(null);
   };
   const reschedule = (t: Tarefa) => {
-    const newDate = new Date(t.data); newDate.setDate(newDate.getDate() + 1);
+    const newDate = new Date(); newDate.setDate(newDate.getDate() + 1);
+    const original = localDate(t.data); newDate.setHours(original.getHours(), original.getMinutes(), 0, 0);
     setTarefas((prev) => prev.map((p) => p.id === t.id ? { ...p, data: newDate.toISOString() } : p));
     toast.success("Reagendada para amanhã");
   };
@@ -259,26 +268,28 @@ function AgendaPage() {
   const today = startOfDay(now);
   const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
   const endOfWeek = new Date(today); endOfWeek.setDate(endOfWeek.getDate() + 7);
-  const endOfMonth = new Date(today); endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
   const counts = useMemo(() => {
-    const hoje = tarefas.filter((t) => isSameDay(new Date(t.data), now) && !t.concluida).length;
-    const atrasadas = tarefas.filter((t) => !t.concluida && new Date(t.data) < today).length;
-    const semana = tarefas.filter((t) => { const d = new Date(t.data); return d >= today && d < endOfWeek; }).length;
-    const concluidasMes = tarefas.filter((t) => t.concluida && new Date(t.data) >= startOfMonth).length;
+    const hoje = tarefas.filter((t) => isSameDay(localDate(t.data), now) && !t.concluida).length;
+    const atrasadas = tarefas.filter((t) => !t.concluida && localDate(t.data) < today).length;
+    const semana = tarefas.filter((t) => { const d = localDate(t.data); return d >= today && d < endOfWeek; }).length;
+    const concluidasMes = tarefas.filter((t) => t.concluida && localDate(t.data) >= startOfMonth && localDate(t.data) < endOfMonth).length;
     return { hoje, atrasadas, semana, concluidasMes };
   }, [tarefas]);
 
   const grupos = useMemo(() => ({
-    Atrasadas: tarefas.filter((t) => !t.concluida && new Date(t.data) < today),
-    Hoje: tarefas.filter((t) => isSameDay(new Date(t.data), now)),
-    Amanhã: tarefas.filter((t) => isSameDay(new Date(t.data), tomorrow)),
-    "Esta Semana": tarefas.filter((t) => { const d = new Date(t.data); return d > tomorrow && d < endOfWeek; }),
-    "Próximo Mês": tarefas.filter((t) => { const d = new Date(t.data); return d >= endOfWeek && d < endOfMonth; }),
+    "Concluídas": tarefas.filter(t => t.concluida && localDate(t.data) < today),
+    "Futuras": tarefas.filter(t => localDate(t.data) >= endOfMonth),
+    Atrasadas: tarefas.filter((t) => !t.concluida && localDate(t.data) < today),
+    Hoje: tarefas.filter((t) => isSameDay(localDate(t.data), now)),
+    Amanhã: tarefas.filter((t) => isSameDay(localDate(t.data), tomorrow)),
+    "Esta Semana": tarefas.filter((t) => { const d = localDate(t.data); return d > tomorrow && d < endOfWeek; }),
+    "Próximo Mês": tarefas.filter((t) => { const d = localDate(t.data); return d >= endOfWeek && d < endOfMonth; }),
   }), [tarefas]);
 
-  const dayTasks = selectedDay ? tarefas.filter((t) => isSameDay(new Date(t.data), selectedDay)) : [];
+  const dayTasks = selectedDay ? tarefas.filter((t) => isSameDay(localDate(t.data), selectedDay)) : [];
 
   return (
     <div className="p-6 space-y-4">
@@ -287,7 +298,7 @@ function AgendaPage() {
           <h1 className="text-3xl font-bold tracking-tight">Agenda & Tarefas</h1>
           <p className="text-muted-foreground">Seus compromissos e follow-ups</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <div className="flex border border-border rounded-md overflow-hidden">
             <Button size="sm" variant={view === "calendario" ? "default" : "ghost"} onClick={() => setView("calendario")} className="rounded-none">
               <CalendarIcon className="h-4 w-4 mr-1" />Calendário

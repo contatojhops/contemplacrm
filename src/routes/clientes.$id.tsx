@@ -1,3 +1,6 @@
+import { pageHead } from "@/lib/metadata";
+import { FEATURES } from "@/lib/features";
+import { DELETE_CONFIRMATION, whatsappUrl, localDate, localInput } from "@/lib/crm";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,15 +18,14 @@ import { ArrowLeft, MessageCircle, Plus, Upload, Download, Trash2, X, FileText, 
 import { ScoreBadge } from "@/components/LeadCard";
 import { calcScore, formatBRL } from "@/lib/scoring";
 import { toast } from "sonner";
-import type { Cliente, ClienteFase, ClientePerfil, Documento, Interacao, InteracaoResultado, InteracaoTipo, ObjecaoRegistrada, Origem, Produto, Temperatura } from "@/lib/types";
+import type { Cliente, ClienteFase, ClientePerfil, Documento, Interacao, InteracaoResultado, InteracaoTipo, ObjecaoRegistrada, Origem, Produto } from "@/lib/types";
 
-export const Route = createFileRoute("/clientes/$id")({ component: ClienteProfilePage });
+export const Route = createFileRoute("/clientes/$id")({ head: () => pageHead("Perfil do cliente", "Dados, interações e próximas ações do cliente."), component: ClienteProfilePage });
 
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
 const ORIGENS: Origem[] = ["Meta Ads", "Instagram", "WhatsApp", "Indicação", "Orgânico", "Outros"];
 const PERFIS: ClientePerfil[] = ["Pessoa Física", "Profissional Liberal", "Empresário", "Investidor"];
 const FASES: ClienteFase[] = ["Lead", "Recuperação", "Cliente Ativo", "Contemplado"];
-const TEMPS: Temperatura[] = ["Frio", "Morno", "Quente"];
 const TAGS_PREDEF = ["aguardando documentos", "recontato em 30 dias", "tem urgência", "muito interessado", "sem urgência", "tem dívidas", "quer pensar mais"];
 const INTERACAO_TIPOS: InteracaoTipo[] = ["WhatsApp", "Ligação", "Reunião", "Instagram DM", "E-mail", "Presencial"];
 const INTERACAO_ICON: Record<InteracaoTipo, string> = { WhatsApp: "💬", Ligação: "📞", Reunião: "🤝", "Instagram DM": "📱", "E-mail": "📧", Presencial: "🤝" };
@@ -68,7 +70,7 @@ function ClienteProfilePage() {
         id, nome: baseLead.nome, telefone: baseLead.telefone, email: baseLead.email,
         produto: baseLead.produto, valorCarta: baseLead.valorCarta, parcelasPagas: 0,
         parcelasTotais: 0, contemplado: false, fechadoEm: baseLead.criadoEm,
-        fase: "Lead", temperatura: baseLead.temperatura, origem: baseLead.origem,
+        ...baseLead.detalhesCliente, perfil: baseLead.perfil as ClientePerfil, fase: baseLead.detalhesCliente?.fase ?? "Lead", origem: baseLead.origem,
         ultimaInteracao: baseLead.ultimoContato, rendaEstimada: baseLead.rendaEstimada,
       };
     }
@@ -91,10 +93,7 @@ function ClienteProfilePage() {
 
   const update = (patch: Partial<Cliente>) => {
     if (fromLead) {
-      // Promover lead em cliente
-      const novo: Cliente = { ...cliente, ...patch, id: `c_${Date.now()}` };
-      setClientes((p) => [novo, ...p]);
-      navigate({ to: "/clientes/$id", params: { id: novo.id } });
+      setLeads(prev => prev.map(l => l.id === realId ? { ...l, nome: patch.nome ?? l.nome, telefone: patch.telefone ?? l.telefone, email: patch.email ?? l.email, perfil: patch.perfil ?? l.perfil, produto: patch.produto ?? l.produto, valorCarta: patch.valorCarta ?? l.valorCarta, origem: patch.origem ?? l.origem, rendaEstimada: patch.rendaEstimada ?? l.rendaEstimada, ultimoContato: patch.ultimaInteracao ?? l.ultimoContato, respondeuMensagem: patch.interacoes ? patch.interacoes.length > 0 : l.respondeuMensagem, reuniaoAgendada: patch.interacoes ? patch.interacoes.some(i => i.tipo === "Reunião") : l.reuniaoAgendada, temUrgencia: patch.tags ? patch.tags.includes("tem urgência") : l.temUrgencia, detalhesCliente: { ...l.detalhesCliente, ...patch } } : l));
     } else {
       setClientes((p) => p.map((c) => c.id === id ? { ...c, ...patch } : c));
     }
@@ -123,23 +122,19 @@ function ClienteProfilePage() {
     setTagInput("");
   };
 
-  const handleFiles = (files: FileList | null) => {
+  const handleFiles = async (files: FileList | null) => {
     if (!files) return;
-    Array.from(files).forEach((f) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const doc: Documento = {
-          id: `d_${Date.now()}_${f.name}`,
-          nome: f.name, tipo: f.type, tamanho: f.size,
-          data: new Date().toISOString(), base64: String(reader.result),
-        };
-        update({ documentos: [...(cliente.documentos ?? []), doc] });
-        toast.success(`${f.name} enviado`);
-      };
-      reader.readAsDataURL(f);
-    });
+    try {
+      const documents = await Promise.all(Array.from(files).map(async f => {
+        if (f.size > 2 * 1024 * 1024) throw new Error("Cada arquivo deve ter até 2 MB.");
+        const base64 = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(f); });
+        return { id: crypto.randomUUID(), nome: f.name, tipo: f.type, tamanho: f.size, data: new Date().toISOString(), base64 };
+      }));
+      update({ documentos: [...(cliente.documentos ?? []), ...documents] });
+      toast.success("Documentos salvos");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível salvar os documentos."); }
   };
-  const removeDoc = (did: string) => update({ documentos: (cliente.documentos ?? []).filter((d) => d.id !== did) });
+  const removeDoc = (did: string) => { if (confirm(DELETE_CONFIRMATION)) update({ documentos: (cliente.documentos ?? []).filter((d) => d.id !== did) }); };
 
   return (
     <div className="p-6 space-y-4">
@@ -157,7 +152,6 @@ function ClienteProfilePage() {
               <h2 className="text-xl font-bold">{cliente.nome}</h2>
               <div className="flex flex-wrap gap-1 justify-center">
                 <Badge className={faseBadge(fase)}>{fase}</Badge>
-                {cliente.temperatura && <Badge variant="outline">{cliente.temperatura}</Badge>}
                 <ScoreBadge score={score} />
               </div>
             </div>
@@ -167,7 +161,7 @@ function ClienteProfilePage() {
                 <div className="flex items-center gap-1">
                   <span>{cliente.telefone}</span>
                   <Button size="icon" variant="ghost" className="h-6 w-6" asChild>
-                    <a href={`https://wa.me/55${cliente.telefone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"><MessageCircle className="h-3.5 w-3.5 text-success" /></a>
+                    <a href={whatsappUrl(cliente.telefone)} target="_blank" rel="noreferrer"><MessageCircle className="h-3.5 w-3.5 text-success" /></a>
                   </Button>
                 </div>
               </div>
@@ -178,13 +172,13 @@ function ClienteProfilePage() {
             {cliente.proximaAcao && (
               <div className="rounded-lg border border-border p-3 bg-accent/50">
                 <div className="text-xs font-semibold text-muted-foreground mb-1">Próxima Ação</div>
-                <div className="text-sm font-medium">{new Date(cliente.proximaAcao.data).toLocaleDateString("pt-BR")} {cliente.proximaAcao.hora}</div>
+                <div className="text-sm font-medium">{localDate(cliente.proximaAcao.data).toLocaleDateString("pt-BR")} {cliente.proximaAcao.hora}</div>
                 <div className="text-xs">{cliente.proximaAcao.descricao}</div>
               </div>
             )}
             <div className="space-y-2">
               <Button size="sm" className="w-full" onClick={() => setInteracaoModal(true)}>Registrar Interação</Button>
-              <Button size="sm" variant="outline" className="w-full" asChild><Link to="/propostas">Criar Proposta</Link></Button>
+              {FEATURES.propostas && <Button size="sm" variant="outline" className="w-full" asChild><Link to="/propostas">Criar Proposta</Link></Button>}
               <Button size="sm" variant="outline" className="w-full" asChild><Link to="/agenda">Agendar Tarefa</Link></Button>
             </div>
           </CardContent>
@@ -198,7 +192,7 @@ function ClienteProfilePage() {
               <TabsTrigger value="produto">Produto</TabsTrigger>
               <TabsTrigger value="historico">Histórico</TabsTrigger>
               <TabsTrigger value="objecoes">Objeções</TabsTrigger>
-              <TabsTrigger value="propostas">Propostas</TabsTrigger>
+              {FEATURES.propostas && <TabsTrigger value="propostas">Propostas</TabsTrigger>}
               <TabsTrigger value="docs">Documentos</TabsTrigger>
               <TabsTrigger value="acao">Próxima Ação</TabsTrigger>
             </TabsList>
@@ -233,13 +227,6 @@ function ClienteProfilePage() {
                   <Select value={fase} onValueChange={(v) => update({ fase: v as ClienteFase })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{FASES.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Temperatura</Label>
-                  <Select value={cliente.temperatura} onValueChange={(v) => update({ temperatura: v as Temperatura })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{TEMPS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="md:col-span-2 space-y-2">
@@ -319,7 +306,7 @@ function ClienteProfilePage() {
                   <TableHeader><TableRow><TableHead>Objeção</TableHead><TableHead>Resposta utilizada</TableHead><TableHead>Data</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {(cliente.objecoes ?? []).map((o) => (
-                      <TableRow key={o.id}><TableCell>{o.texto}</TableCell><TableCell>{o.resposta}</TableCell><TableCell>{new Date(o.data).toLocaleDateString("pt-BR")}</TableCell></TableRow>
+                      <TableRow key={o.id}><TableCell>{o.texto}</TableCell><TableCell>{o.resposta}</TableCell><TableCell>{localDate(o.data).toLocaleDateString("pt-BR")}</TableCell></TableRow>
                     ))}
                     {(cliente.objecoes ?? []).length === 0 && <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">Nenhuma objeção registrada</TableCell></TableRow>}
                   </TableBody>
@@ -327,7 +314,7 @@ function ClienteProfilePage() {
               </CardContent></Card>
             </TabsContent>
 
-            <TabsContent value="propostas">
+            {FEATURES.propostas && <TabsContent value="propostas">
               <Card><CardContent className="p-6 space-y-4">
                 <div className="flex justify-end"><Button asChild><Link to="/propostas"><Plus className="h-4 w-4 mr-1" />Nova Proposta</Link></Button></div>
                 <Table>
@@ -335,7 +322,7 @@ function ClienteProfilePage() {
                   <TableBody>
                     {propostasCliente.map((p) => (
                       <TableRow key={p.id}>
-                        <TableCell>{new Date(p.criadaEm).toLocaleDateString("pt-BR")}</TableCell>
+                        <TableCell>{localDate(p.criadaEm).toLocaleDateString("pt-BR")}</TableCell>
                         <TableCell>{p.produto}</TableCell>
                         <TableCell>{formatBRL(p.valorCarta)}</TableCell>
                         <TableCell>{p.prazoMeses}m</TableCell>
@@ -347,11 +334,11 @@ function ClienteProfilePage() {
                   </TableBody>
                 </Table>
               </CardContent></Card>
-            </TabsContent>
+            </TabsContent>}
 
             <TabsContent value="docs">
               <Card><CardContent className="p-6 space-y-4">
-                <label className="border-2 border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-accent">
+                <label onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }} className="border-2 border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-accent">
                   <Upload className="h-8 w-8 text-muted-foreground mb-2" />
                   <span className="text-sm">Clique ou arraste arquivos (PDF, JPG, PNG, DOCX)</span>
                   <input type="file" className="hidden" multiple accept=".pdf,.jpg,.jpeg,.png,.docx" onChange={(e) => handleFiles(e.target.files)} />
@@ -364,7 +351,7 @@ function ClienteProfilePage() {
                         <Icon className="h-5 w-5 text-muted-foreground" />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate">{d.nome}</div>
-                          <div className="text-xs text-muted-foreground">{(d.tamanho / 1024).toFixed(1)} KB · {new Date(d.data).toLocaleDateString("pt-BR")}</div>
+                          <div className="text-xs text-muted-foreground">{(d.tamanho / 1024).toFixed(1)} KB · {localDate(d.data).toLocaleDateString("pt-BR")}</div>
                         </div>
                         <Button size="icon" variant="ghost" asChild className="h-7 w-7"><a href={d.base64} download={d.nome}><Download className="h-4 w-4" /></a></Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeDoc(d.id)}><Trash2 className="h-4 w-4" /></Button>
@@ -379,7 +366,7 @@ function ClienteProfilePage() {
             <TabsContent value="acao">
               <Card><CardContent className="p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div><Label>Data</Label><Input type="date" value={cliente.proximaAcao?.data?.slice(0,10) ?? ""} onChange={(e) => update({ proximaAcao: { ...(cliente.proximaAcao ?? { tipo: "Follow-up", descricao: "" }), data: new Date(e.target.value).toISOString() } })} /></div>
+                  <div><Label>Data</Label><Input type="date" value={cliente.proximaAcao?.data?.slice(0,10) ?? ""} onChange={(e) => update({ proximaAcao: { ...(cliente.proximaAcao ?? { tipo: "Follow-up", descricao: "" }), data: e.target.value } })} /></div>
                   <div><Label>Hora</Label><Input type="time" value={cliente.proximaAcao?.hora ?? ""} onChange={(e) => update({ proximaAcao: { ...(cliente.proximaAcao ?? { data: new Date().toISOString(), tipo: "Follow-up", descricao: "" }), hora: e.target.value } })} /></div>
                   <div><Label>Tipo</Label><Input value={cliente.proximaAcao?.tipo ?? ""} onChange={(e) => update({ proximaAcao: { ...(cliente.proximaAcao ?? { data: new Date().toISOString(), descricao: "" }), tipo: e.target.value } })} /></div>
                   <div className="md:col-span-2"><Label>Descrição</Label><Textarea value={cliente.proximaAcao?.descricao ?? ""} onChange={(e) => update({ proximaAcao: { ...(cliente.proximaAcao ?? { data: new Date().toISOString(), tipo: "Follow-up" }), descricao: e.target.value } })} /></div>
@@ -396,7 +383,7 @@ function ClienteProfilePage() {
                   }}>Concluída</Button>
                   <Button size="sm" variant="outline" onClick={() => {
                     if (cliente.proximaAcao) {
-                      const d = new Date(cliente.proximaAcao.data); d.setDate(d.getDate() + 1);
+                      const d = localDate(cliente.proximaAcao.data); d.setDate(d.getDate() + 1);
                       update({ proximaAcao: { ...cliente.proximaAcao, data: d.toISOString() } });
                       toast.success("Reagendada");
                     }
@@ -427,7 +414,7 @@ function ClienteProfilePage() {
 
 function InteracaoModal({ open, onOpenChange, onSave }: { open: boolean; onOpenChange: (b: boolean) => void; onSave: (i: Interacao) => void }) {
   const [tipo, setTipo] = useState<InteracaoTipo>("WhatsApp");
-  const [data, setData] = useState(new Date().toISOString().slice(0, 16));
+  const [data, setData] = useState(localInput());
   const [duracao, setDuracao] = useState(0);
   const [resumo, setResumo] = useState("");
   const [resultado, setResultado] = useState<InteracaoResultado>("Neutro");
@@ -435,7 +422,8 @@ function InteracaoModal({ open, onOpenChange, onSave }: { open: boolean; onOpenC
   const [custom, setCustom] = useState("");
 
   const submit = () => {
-    if (!resumo) { toast.error("Adicione um resumo"); return; }
+    if (!data || !Number.isFinite(new Date(data).getTime())) { toast.error("Informe uma data válida"); return; }
+    if (!resumo.trim()) { toast.error("Adicione um resumo"); return; }
     onSave({ id: `i_${Date.now()}`, tipo, data: new Date(data).toISOString(), duracao, resumo, resultado, objecoes: objs });
     onOpenChange(false);
     setResumo(""); setObjs([]); setCustom("");

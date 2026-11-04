@@ -1,3 +1,4 @@
+import { featureEnabled } from "@/lib/features";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import { useConfig } from "@/lib/store";
 
-const items = [
+export const items = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/leads", label: "Leads & Pipeline", icon: Target },
   { to: "/clientes", label: "Clientes", icon: Users },
@@ -41,7 +42,7 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {items.map((it) => {
+        {items.filter(it => featureEnabled(it.to)).map((it) => {
           const active = it.to === "/" ? path === "/" : path.startsWith(it.to);
           return (
             <Link

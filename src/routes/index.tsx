@@ -1,10 +1,13 @@
+import { pageHead } from "@/lib/metadata";
+import { FEATURES } from "@/lib/features";
+import { closedThisMonth, whatsappUrl, localDate } from "@/lib/crm";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
   TrendingUp,
   Users as UsersIcon,
-  Flame,
-  FileText,
+
+
   CheckCircle2,
   DollarSign,
   MessageCircle,
@@ -32,7 +35,7 @@ import { useLeads, usePropostas, useTarefas, useConfig, useClientes } from "@/li
 import { calcScore, formatBRL } from "@/lib/scoring";
 import type { Etapa, Origem, Produto } from "@/lib/types";
 
-export const Route = createFileRoute("/")({ component: Dashboard });
+export const Route = createFileRoute("/")({ head: () => pageHead("Dashboard", "Indicadores e acompanhamento das vendas de consórcio."), component: Dashboard });
 
 const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
 const ORIGENS: Origem[] = ["Meta Ads", "Instagram", "WhatsApp", "Indicação", "Orgânico", "Outros"];
@@ -42,7 +45,7 @@ const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--cha
 function Dashboard() {
   const [leads] = useLeads();
   const [propostas] = usePropostas();
-  const [tarefas] = useTarefas();
+  const [tarefas, setTarefas] = useTarefas();
   const [config] = useConfig();
   const [clientes] = useClientes();
 
@@ -52,23 +55,17 @@ function Dashboard() {
     const curYear = now.getFullYear();
     const inCurMonth = (d: string | Date | undefined | null) => {
       if (!d) return false;
-      const x = new Date(d);
+      const x = localDate(d);
       return x.getMonth() === curMonth && x.getFullYear() === curYear;
     };
     const leadsMes = leads.filter((l) => inCurMonth(l.criadoEm));
-    const quentes = leads.filter((l) => l.temperatura === "Quente");
     const propostasMes = propostas.filter((p) => inCurMonth(p.criadaEm) && ["Enviada", "Em Análise", "Aprovada"].includes(p.status));
-    const leadsFechadosMes = leads.filter((l) =>
-      (l.etapa === "Fechado" || (l.etapa === "Em Análise" && (l as any).fase === "Contemplado")) && inCurMonth(l.criadoEm)
-    );
-    const clientesContempladosMes = (clientes ?? []).filter((c: any) => c.contemplado === true && inCurMonth(c.contempladoEm ?? c.contemplationDate));
-    const fechadosMesCount = leadsFechadosMes.length + clientesContempladosMes.length;
+    const leadsFechadosMes = closedThisMonth(leads, now);
+    const fechadosMesCount = leadsFechadosMes.length;
     const ativos: Etapa[] = ["Novo Lead", "Contato Realizado", "Proposta Enviada", "Em Análise"];
     const pipelineValor = leads.filter((l) => ativos.includes(l.etapa)).reduce((s, l) => s + l.valorCarta, 0);
-    const receitaFechada =
-      leadsFechadosMes.reduce((s, l) => s + l.valorCarta, 0) +
-      clientesContempladosMes.reduce((s: number, c: any) => s + (c.valorCarta ?? 0), 0);
-    return { leadsMes: leadsMes.length, quentes: quentes.length, propostasMes: propostasMes.length, fechadosMes: fechadosMesCount, pipelineValor, receitaFechada };
+    const receitaFechada = leadsFechadosMes.reduce((s, l) => s + l.valorCarta, 0);
+    return { leadsMes: leadsMes.length, propostasMes: propostasMes.length, fechadosMes: fechadosMesCount, pipelineValor, receitaFechada };
   }, [leads, propostas, clientes]);
 
   const funnelData = ETAPAS.map((e) => ({ etapa: e, leads: leads.filter((l) => l.etapa === e).length }));
@@ -82,13 +79,13 @@ function Dashboard() {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const next = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
       const ls = leads.filter((l) => {
-        const c = new Date(l.criadoEm);
+        const c = localDate(l.criadoEm);
         return c >= d && c < next;
       });
       out.push({
         mes: d.toLocaleDateString("pt-BR", { month: "short" }),
         leads: ls.length,
-        vendas: ls.filter((l) => l.etapa === "Fechado").length,
+        vendas: closedThisMonth(leads, d).length,
       });
     }
     return out;
@@ -102,27 +99,22 @@ function Dashboard() {
 
   const semContato = leads
     .filter((l) => {
-      const dias = (Date.now() - new Date(l.ultimoContato).getTime()) / 86400000;
+      const dias = (Date.now() - localDate(l.ultimoContato).getTime()) / 86400000;
       return dias > 7 && !["Fechado", "Perdido"].includes(l.etapa);
     })
     .slice(0, 5);
 
   const followupsHoje = tarefas.filter((t) => {
-    const d = new Date(t.data);
+    const d = localDate(t.data);
     const today = new Date();
     return !t.concluida && d.toDateString() === today.toDateString();
   }).slice(0, 5);
 
-  const quentesSemProposta = leads.filter(
-    (l) => l.temperatura === "Quente" && !propostas.some((p) => p.leadId === l.id) && !["Fechado", "Perdido"].includes(l.etapa)
-  ).slice(0, 5);
-
-  const metaPercent = Math.min(100, (stats.receitaFechada / config.metaMensal) * 100);
+  const metaPercent = config.metaMensal > 0 ? Math.min(100, (stats.receitaFechada / config.metaMensal) * 100) : 0;
 
   const kpis = [
     { label: "Leads do Mês", value: stats.leadsMes, icon: UsersIcon, trend: "+12%", color: "text-chart-1" },
-    { label: "Leads Quentes", value: stats.quentes, icon: Flame, trend: "+8%", color: "text-destructive" },
-    { label: "Propostas Enviadas", value: stats.propostasMes, icon: FileText, trend: "+5%", color: "text-chart-3" },
+    ...(FEATURES.propostas ? [{ label: "Propostas Enviadas", value: stats.propostasMes, icon: CheckCircle2, color: "text-chart-3" }] : []),
     { label: "Vendas Fechadas", value: stats.fechadosMes, icon: CheckCircle2, trend: "+20%", color: "text-success" },
     { label: "Pipeline Potencial", value: formatBRL(stats.pipelineValor), icon: DollarSign, trend: "+15%", color: "text-chart-2" },
   ];
@@ -134,15 +126,13 @@ function Dashboard() {
         <p className="text-muted-foreground">Visão geral da sua operação de vendas</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {kpis.map((k) => (
           <Card key={k.label}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <k.icon className={`h-5 w-5 ${k.color}`} />
-                <span className="text-xs text-success font-medium flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" />{k.trend}
-                </span>
+
               </div>
               <div className="mt-2 text-2xl font-bold">{k.value}</div>
               <div className="text-xs text-muted-foreground mt-1">{k.label}</div>
@@ -166,7 +156,7 @@ function Dashboard() {
         <Card>
           <CardHeader><CardTitle className="text-base">Funil de Vendas</CardTitle></CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
               <BarChart data={funnelData} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis type="number" stroke="var(--muted-foreground)" />
@@ -174,14 +164,14 @@ function Dashboard() {
                 <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }} />
                 <Bar dataKey="leads" fill="var(--chart-1)" radius={[0, 6, 6, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle className="text-base">Leads por Origem</CardTitle></CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={origemData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
                   {origemData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -189,14 +179,14 @@ function Dashboard() {
                 <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }} />
                 <Legend />
               </PieChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle className="text-base">Leads por Produto</CardTitle></CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
               <BarChart data={produtoData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="name" stroke="var(--muted-foreground)" />
@@ -204,14 +194,14 @@ function Dashboard() {
                 <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }} />
                 <Bar dataKey="leads" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle className="text-base">Evolução Mensal</CardTitle></CardHeader>
           <CardContent className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
               <LineChart data={evolucaoData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis dataKey="mes" stroke="var(--muted-foreground)" />
@@ -221,14 +211,14 @@ function Dashboard() {
                 <Line type="monotone" dataKey="leads" stroke="var(--chart-1)" strokeWidth={2} name="Leads Gerados" />
                 <Line type="monotone" dataKey="vendas" stroke="var(--chart-5)" strokeWidth={2} name="Vendas Fechadas" />
               </LineChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle className="text-base">Taxa de Conversão por Produto</CardTitle></CardHeader>
           <CardContent className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            {leads.length === 0 ? <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Nenhum lead cadastrado</div> : <ResponsiveContainer width="100%" height="100%">
               <BarChart data={conversaoData} layout="vertical" margin={{ left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis type="number" unit="%" stroke="var(--muted-foreground)" />
@@ -236,12 +226,12 @@ function Dashboard() {
                 <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)" }} />
                 <Bar dataKey="taxa" fill="var(--chart-3)" radius={[0, 6, 6, 0]} />
               </BarChart>
-            </ResponsiveContainer>
+            </ResponsiveContainer>}
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader><CardTitle className="text-base">Leads sem contato +7 dias</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -254,11 +244,11 @@ function Dashboard() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{l.nome}</div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(l.ultimoContato).toLocaleDateString("pt-BR")}
+                    {localDate(l.ultimoContato).toLocaleDateString("pt-BR")}
                   </div>
                 </div>
                 <Button size="sm" variant="outline" asChild>
-                  <a href={`https://wa.me/55${l.telefone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
+                  <a href={whatsappUrl(l.telefone)} target="_blank" rel="noreferrer">
                     <MessageCircle className="h-3 w-3 mr-1" />Contatar
                   </a>
                 </Button>
@@ -274,37 +264,19 @@ function Dashboard() {
             {followupsHoje.map((t) => (
               <div key={t.id} className="flex items-center gap-3">
                 <div className="text-xs font-mono bg-accent rounded px-2 py-1">
-                  {new Date(t.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  {localDate(t.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{t.cliente}</div>
                   <div className="text-xs text-muted-foreground">{t.tipo}</div>
                 </div>
-                <Button size="sm" variant="outline"><CheckCircle2 className="h-3 w-3 mr-1" />Concluir</Button>
+                <Button size="sm" variant="outline" onClick={() => setTarefas(prev => prev.map(task => task.id === t.id ? { ...task, concluida: true } : task))}><CheckCircle2 className="h-3 w-3 mr-1" />Concluir</Button>
               </div>
             ))}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="text-base">Leads Quentes sem Proposta</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {quentesSemProposta.length === 0 && <p className="text-sm text-muted-foreground">Tudo em ordem</p>}
-            {quentesSemProposta.map((l) => {
-              const score = calcScore(l);
-              return (
-                <div key={l.id} className="flex items-center gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{l.nome}</div>
-                    <div className="text-xs text-muted-foreground">{l.produto}</div>
-                  </div>
-                  <Badge variant="secondary">{score}</Badge>
-                  <Button size="sm" variant="outline"><FileText className="h-3 w-3 mr-1" />Proposta</Button>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+
       </div>
     </div>
   );
