@@ -5,7 +5,7 @@
 - [x] Audit actions, dates, forms, deletion, drag-and-drop, empty charts and mobile navigation; verify flows.
 
 # Multiple pipelines
-- [ ] Add persistent pipelines and migrate unassigned leads/tasks without deleting data.
-- [ ] Build pipeline navigation, management, filtered boards, transfer and CSV export.
-- [ ] Consolidate dashboard with filters, comparisons, real charts and alerts.
-- [ ] Verify two pipelines, stage dragging, transfer and dashboard totals.
+- [x] Add persistent pipelines and migrate unassigned leads/tasks without deleting data.
+- [x] Build pipeline navigation, management, filtered boards, transfer and CSV export.
+- [x] Consolidate dashboard with filters, comparisons, real charts and alerts.
+- [x] Verify two pipelines, stage dragging, transfer and dashboard totals.

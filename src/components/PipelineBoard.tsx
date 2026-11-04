@@ -1,7 +1,6 @@
 import { PipelineBadge } from "./PipelineBadge";
-import { ETAPAS, activeLead, metrics, periodRange, inRange, leadCsv, type Period } from "@/lib/pipelines";
+import { ETAPAS, metrics, periodRange, inRange, leadCsv, type Period } from "@/lib/pipelines";
 import { Download } from "lucide-react";
-import { pageHead } from "@/lib/metadata";
 import { changeStage, DELETE_CONFIRMATION, localDate } from "@/lib/crm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -138,7 +137,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
           <h1 className="text-3xl font-bold tracking-tight">{pipeline?.nome ?? "Todos os leads"}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-2"><PipelineBadge pipeline={pipeline} /><span className="text-sm text-muted-foreground">{summary.leads} leads · {summary.ativos} ativos · {formatBRL(summary.aberto)} em aberto · {summary.conversao.toFixed(1)}% conversão</span></div>
         </div>
-        <div className="flex gap-2"><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Exportar CSV</Button><Button disabled={pipeline?.arquivada} onClick={() => { setEditing(null); setModalOpen(true); }}>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Exportar CSV</Button><Button disabled={pipeline?.arquivada} onClick={() => { setEditing(null); setModalOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />Novo Lead
         </Button></div>
       </div>
@@ -183,6 +182,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
         </div>
       </Card>
 
+      {filtered.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lead ainda — cadastre o primeiro</p>}
       {view === "kanban" ? (
         <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
           <div className="flex gap-3 overflow-x-auto pb-4">
