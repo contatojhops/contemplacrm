@@ -15,7 +15,9 @@ import { Route as CampanhasRouteImport } from './routes/campanhas'
 import { Route as CarteiraRouteImport } from './routes/carteira'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PropostasRouteImport } from './routes/propostas'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ClientesIndexRouteImport } from './routes/clientes.index'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as PipelineIdRouteImport } from './routes/pipeline.$id'
@@ -51,9 +53,19 @@ const LeadsRoute = LeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PropostasRoute = PropostasRouteImport.update({
   id: '/propostas',
   path: '/propostas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesIndexRoute = ClientesIndexRouteImport.update({
@@ -84,7 +96,9 @@ export interface FileRoutesByFullPath {
   '/carteira': typeof CarteiraRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/leads': typeof LeadsRoute
+  '/login': typeof LoginRoute
   '/propostas': typeof PropostasRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/pipeline/$id': typeof PipelineIdRoute
   '/pipeline/todos': typeof PipelineTodosRoute
@@ -97,7 +111,9 @@ export interface FileRoutesByTo {
   '/carteira': typeof CarteiraRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/leads': typeof LeadsRoute
+  '/login': typeof LoginRoute
   '/propostas': typeof PropostasRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/pipeline/$id': typeof PipelineIdRoute
   '/pipeline/todos': typeof PipelineTodosRoute
@@ -111,7 +127,9 @@ export interface FileRoutesById {
   '/carteira': typeof CarteiraRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/leads': typeof LeadsRoute
+  '/login': typeof LoginRoute
   '/propostas': typeof PropostasRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/pipeline/$id': typeof PipelineIdRoute
   '/pipeline/todos': typeof PipelineTodosRoute
@@ -126,7 +144,9 @@ export interface FileRouteTypes {
     | '/carteira'
     | '/configuracoes'
     | '/leads'
+    | '/login'
     | '/propostas'
+    | '/reset-password'
     | '/clientes/$id'
     | '/pipeline/$id'
     | '/pipeline/todos'
@@ -139,7 +159,9 @@ export interface FileRouteTypes {
     | '/carteira'
     | '/configuracoes'
     | '/leads'
+    | '/login'
     | '/propostas'
+    | '/reset-password'
     | '/clientes/$id'
     | '/pipeline/$id'
     | '/pipeline/todos'
@@ -152,7 +174,9 @@ export interface FileRouteTypes {
     | '/carteira'
     | '/configuracoes'
     | '/leads'
+    | '/login'
     | '/propostas'
+    | '/reset-password'
     | '/clientes/$id'
     | '/pipeline/$id'
     | '/pipeline/todos'
@@ -166,7 +190,9 @@ export interface RootRouteChildren {
   CarteiraRoute: typeof CarteiraRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   LeadsRoute: typeof LeadsRoute
+  LoginRoute: typeof LoginRoute
   PropostasRoute: typeof PropostasRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ClientesIdRoute: typeof ClientesIdRoute
   PipelineIdRoute: typeof PipelineIdRoute
   PipelineTodosRoute: typeof PipelineTodosRoute
@@ -217,11 +243,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/propostas': {
       id: '/propostas'
       path: '/propostas'
       fullPath: '/propostas'
       preLoaderRoute: typeof PropostasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes/': {
@@ -262,7 +302,9 @@ const rootRouteChildren: RootRouteChildren = {
   CarteiraRoute: CarteiraRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   LeadsRoute: LeadsRoute,
+  LoginRoute: LoginRoute,
   PropostasRoute: PropostasRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ClientesIdRoute: ClientesIdRoute,
   PipelineIdRoute: PipelineIdRoute,
   PipelineTodosRoute: PipelineTodosRoute,
