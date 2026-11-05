@@ -154,9 +154,14 @@ export function useCloudDocument<T extends object>(defaults: T) {
     state.set("configuracoes", { data: next, loaded: true });
     loadErrors.delete("configuracoes");
     emit();
-    supabase.from("configuracoes").upsert({ user_id: uid, data: next as never, updated_at: new Date().toISOString() }, { onConflict: "user_id" }).then(async ({ error }) => {
+    const previousQueue = writeQueues.get("configuracoes") ?? Promise.resolve();
+    const task = previousQueue.catch(() => undefined).then(async () => {
       if (uid !== userId) return;
-      if (!error) return;
+      const desired = state.get("configuracoes")?.data ?? next;
+      const { error } = await supabase.from("configuracoes").upsert({ user_id: uid, data: desired as never, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+      if (error) throw error;
+    }).catch(async () => {
+      if (uid !== userId) return;
       try {
         const remote = await fetchTable("configuracoes");
         state.set("configuracoes", { data: remote, loaded: true });
@@ -167,6 +172,10 @@ export function useCloudDocument<T extends object>(defaults: T) {
       }
       emit();
       toast.error(SAVE_ERROR);
+    });
+    writeQueues.set("configuracoes", task);
+    void task.finally(() => {
+      if (writeQueues.get("configuracoes") === task) writeQueues.delete("configuracoes");
     });
   }, [defaults]);
   return [value, save] as const;
