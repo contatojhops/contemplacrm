@@ -6,6 +6,8 @@ import { TopNavbar } from "./TopNavbar";
 import { FloatingActionButton } from "./FloatingActionButton";
 import { Toaster } from "@/components/ui/sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { featureEnabled } from "@/lib/features";
 import { supabase } from "@/integrations/supabase/client";
 import { reloadAll, setCloudUser, useCloudReady, useCloudError } from "@/lib/cloudStore";
 import { LocalImportPrompt } from "./LocalImportPrompt";
@@ -36,10 +38,12 @@ export function AppLayout() {
   }, []);
 
   const isPublic = PUBLIC_PATHS.includes(path);
+  const isFeatureDisabled = !featureEnabled(path);
   useEffect(() => {
     if (auth === "out" && !isPublic) navigate({ to: "/login", replace: true });
     if (auth === "in" && path === "/login") navigate({ to: "/", replace: true });
-  }, [auth, isPublic, path, navigate]);
+    if (auth === "in" && isFeatureDisabled) navigate({ to: "/pipeline/todos", replace: true });
+  }, [auth, isPublic, isFeatureDisabled, path, navigate]);
   useEffect(() => { document.documentElement.classList.toggle("dark", !!config.darkMode); }, [config.darkMode]);
 
   if (isPublic) return <><Outlet /><Toaster richColors position="top-right" /></>;
