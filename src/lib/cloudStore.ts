@@ -43,7 +43,11 @@ export async function reloadAll() {
   const uid = userId;
   if (!uid) return;
   const tables: CloudTable[] = [...COLLECTION_TABLES, "configuracoes"];
-  const results = await Promise.allSettled(tables.map(fetchTable));
+  const results = await Promise.allSettled(tables.map((table) => {
+    // Do not let a focus-triggered refresh overwrite optimistic state while a write is queued.
+    if (writeQueues.has(table)) return Promise.resolve(state.get(table)?.data ?? (table === "configuracoes" ? null : []));
+    return fetchTable(table);
+  }));
   if (uid !== userId) return;
   results.forEach((r, i) => {
     const table = tables[i];
