@@ -171,7 +171,7 @@ function SimuladorTab() {
     if (!nome) { toast.error("Selecione ou informe um cliente"); return; }
     const cliente = clientes.find((c) => c.nome === clienteSel);
     const nova: Proposta = {
-      id: `p_${Date.now()}`,
+      id: crypto.randomUUID(),
       leadId: cliente?.id ?? "",
       leadNome: nome,
       produto, valorCarta, prazoMeses: prazo, parcela: result.parcela,

@@ -29,13 +29,13 @@ export const defaultTemplates: Template[] = [
 ];
 
 export const defaultConfig: Configuracoes = {
-  metaMensal: 1500000,
-  metaUnidades: 8,
-  consultorNome: "João Silva",
-  consultorEmail: "joao@consorcio.com",
-  consultorTelefone: "11999998888",
-  consultorCargo: "Consultor de Consórcio",
-  whatsappNumero: "5511999998888",
+  metaMensal: 0,
+  metaUnidades: 0,
+  consultorNome: "",
+  consultorEmail: "",
+  consultorTelefone: "",
+  consultorCargo: "",
+  whatsappNumero: "",
   taxaAdmin: 18,
   fundoReserva: 1,
   comissao: 1.5,

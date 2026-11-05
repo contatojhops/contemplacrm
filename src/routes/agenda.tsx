@@ -105,7 +105,7 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
     if (!form.titulo?.trim() || !linked) { toast.error("Preencha o título e selecione um lead"); return; }
     if (!form.data || !Number.isFinite(localDate(form.data).getTime())) { toast.error("Informe uma data válida"); return; }
     const t: Tarefa = {
-      id: initial?.id ?? `t_${Date.now()}`,
+      id: initial?.id ?? crypto.randomUUID(),
       titulo: form.titulo,
       tipo: (form.tipo as TarefaTipo) ?? "Outro",
       cliente: linked.nome,

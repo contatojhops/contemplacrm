@@ -55,7 +55,7 @@ function CarteiraPage() {
 
   const addIndicacao = () => {
     if (!sel || !refNome.trim()) return;
-    const nova: Indicacao = { id: `ind_${Date.now()}`, nome: refNome.trim(), status: "Lead", data: new Date().toISOString() };
+    const nova: Indicacao = { id: crypto.randomUUID(), nome: refNome.trim(), status: "Lead", data: new Date().toISOString() };
     setClientes((p) => p.map((c) => c.id === sel.id ? { ...c, indicacoes: [...(c.indicacoes ?? []), nova] } : c));
     setRefNome(""); setRefOpen(false);
     toast.success("Indicação registrada!");
