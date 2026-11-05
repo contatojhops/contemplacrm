@@ -86,7 +86,7 @@ async function persistCollection(table: CollectionTable, prev: Item[], next: Ite
   if (!upserts.length && !deletes.length) return;
   const { error } = await supabase.rpc("persist_crm_collection", {
     p_table: table,
-    p_upserts: upserts,
+    p_upserts: upserts as never,
     p_deletes: deletes,
   });
   if (error) throw error;
