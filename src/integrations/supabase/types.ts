@@ -163,7 +163,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      persist_crm_collection: {
+        Args: { p_table: string; p_upserts: Json; p_deletes: string[] }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
