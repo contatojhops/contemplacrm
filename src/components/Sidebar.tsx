@@ -9,7 +9,9 @@ import {
   Briefcase,
   Megaphone,
   Settings as SettingsIcon,
+  LogOut,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useConfig } from "@/lib/store";
 
 export const items = [
@@ -26,7 +28,7 @@ export const items = [
 export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [config] = useConfig();
-  const initials = config.consultorNome.split(" ").map((n) => n[0]).slice(0, 2).join("");
+  const initials = (config.consultorNome || "?").split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("");
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
@@ -66,10 +68,11 @@ export function Sidebar() {
             {initials}
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-medium truncate">{config.consultorNome}</div>
-            <div className="text-xs text-sidebar-foreground/60 truncate">Consultor de Consórcio</div>
+            <div className="text-sm font-medium truncate">{config.consultorNome || "Seu nome"}</div>
+            <div className="text-xs text-sidebar-foreground/60 truncate">{config.consultorCargo || "Complete seu perfil"}</div>
           </div>
         </div>
+        <button type="button" onClick={() => supabase.auth.signOut()} className="mt-3 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><LogOut className="h-4 w-4" />Sair</button>
       </div>
     </aside>
   );

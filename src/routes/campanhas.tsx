@@ -68,7 +68,7 @@ function CampanhasPage() {
     if (form.id) {
       setCampanhas((p) => p.map((c) => c.id === form.id ? form : c));
     } else {
-      setCampanhas((p) => [...p, { ...form, id: `ca_${Date.now()}` }]);
+      setCampanhas((p) => [...p, { ...form, id: crypto.randomUUID() }]);
     }
     toast.success("Campanha salva!");
     setOpen(false); setForm(empty);

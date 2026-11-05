@@ -47,7 +47,7 @@ function ConfigPage() {
 
   const addEtapa = () => {
     if (!novaEtapa.trim()) return;
-    const nova: EtapaItem = { id: `e_${Date.now()}`, nome: novaEtapa.trim() };
+    const nova: EtapaItem = { id: crypto.randomUUID(), nome: novaEtapa.trim() };
     setForm({ ...form, etapas: [...(form.etapas ?? []), nova] });
     setNovaEtapa("");
   };
@@ -167,7 +167,7 @@ function ConfigPage() {
           <div className="flex gap-2 items-end">
             <div className="flex-1"><Label>Nome</Label><Input value={novaTag.nome} onChange={(e) => setNovaTag({ ...novaTag, nome: e.target.value })} /></div>
             <div><Label>Cor</Label><Input type="color" value={novaTag.cor} onChange={(e) => setNovaTag({ ...novaTag, cor: e.target.value })} className="w-16 p-1 h-9" /></div>
-            <Button onClick={() => { if (!novaTag.nome.trim()) return; const nt: TagItem = { id: `tg_${Date.now()}`, nome: novaTag.nome.trim(), cor: novaTag.cor }; setForm({ ...form, tags: [...(form.tags ?? []), nt] }); setNovaTag({ nome: "", cor: "#3b82f6" }); }}><Plus className="h-4 w-4" /></Button>
+            <Button onClick={() => { if (!novaTag.nome.trim()) return; const nt: TagItem = { id: crypto.randomUUID(), nome: novaTag.nome.trim(), cor: novaTag.cor }; setForm({ ...form, tags: [...(form.tags ?? []), nt] }); setNovaTag({ nome: "", cor: "#3b82f6" }); }}><Plus className="h-4 w-4" /></Button>
           </div>
         </CardContent>
       </Card>
@@ -197,7 +197,7 @@ function ConfigPage() {
               </Select>
             </div>
             <Textarea placeholder="Mensagem..." value={novoTemplate.texto} onChange={(e) => setNovoTemplate({ ...novoTemplate, texto: e.target.value })} />
-            <Button size="sm" onClick={() => { if (!novoTemplate.nome.trim() || !novoTemplate.texto.trim()) return; setForm({ ...form, templates: [...(form.templates ?? []), { ...novoTemplate, id: `tp_${Date.now()}` }] }); setNovoTemplate({ id: "", nome: "", canal: "WhatsApp", texto: "" }); }}><Plus className="h-4 w-4 mr-1" />Novo Template</Button>
+            <Button size="sm" onClick={() => { if (!novoTemplate.nome.trim() || !novoTemplate.texto.trim()) return; setForm({ ...form, templates: [...(form.templates ?? []), { ...novoTemplate, id: crypto.randomUUID() }] }); setNovoTemplate({ id: "", nome: "", canal: "WhatsApp", texto: "" }); }}><Plus className="h-4 w-4 mr-1" />Novo Template</Button>
           </div>
         </CardContent>
       </Card>

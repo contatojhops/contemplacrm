@@ -127,7 +127,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
 
   const range = periodRange("todos");
   const summary = metrics(leads.filter(l=>!pipelineId || l.pipeline_id===pipelineId), range.start,range.end);
-  const exportCsv = () => {const blob = new Blob([leadCsv(filtered,pipelines)],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="leads.csv";a.click();URL.revokeObjectURL(url);};
+  const exportCsv = () => {const blob = new Blob([leadCsv(filtered,pipelines)],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`leads-${new Date().toLocaleDateString("sv-SE")}.csv`;a.click();URL.revokeObjectURL(url);};
   if (pipelineId && !pipeline) return <div className="p-6 text-muted-foreground">Pipeline não encontrada.</div>;
   return (
     <div className="p-6 space-y-4">

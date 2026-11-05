@@ -424,7 +424,7 @@ function InteracaoModal({ open, onOpenChange, onSave }: { open: boolean; onOpenC
   const submit = () => {
     if (!data || !Number.isFinite(new Date(data).getTime())) { toast.error("Informe uma data válida"); return; }
     if (!resumo.trim()) { toast.error("Adicione um resumo"); return; }
-    onSave({ id: `i_${Date.now()}`, tipo, data: new Date(data).toISOString(), duracao, resumo, resultado, objecoes: objs });
+    onSave({ id: crypto.randomUUID(), tipo, data: new Date(data).toISOString(), duracao, resumo, resultado, objecoes: objs });
     onOpenChange(false);
     setResumo(""); setObjs([]); setCustom("");
     toast.success("Interação registrada");
@@ -483,7 +483,7 @@ function ObjecaoModal({ open, onOpenChange, onSave }: { open: boolean; onOpenCha
   const submit = () => {
     const t = texto === "Outro" ? custom : texto;
     if (!t || !resposta) { toast.error("Preencha objeção e resposta"); return; }
-    onSave({ id: `o_${Date.now()}`, texto: t, resposta, data: new Date().toISOString() });
+    onSave({ id: crypto.randomUUID(), texto: t, resposta, data: new Date().toISOString() });
     onOpenChange(false);
     setResposta(""); setCustom("");
     toast.success("Objeção registrada");

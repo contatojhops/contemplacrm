@@ -43,7 +43,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
       ...initial,
       stage_changed_at: initial?.stage_changed_at ?? now,
       pipeline_id: form.pipeline_id,
-      id: initial?.id ?? `l_${Date.now()}`,
+      id: initial?.id ?? crypto.randomUUID(),
       nome: form.nome.trim(),
       telefone: form.telefone.trim(),
       email: form.email ?? "",
