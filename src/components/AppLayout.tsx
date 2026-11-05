@@ -7,7 +7,7 @@ import { FloatingActionButton } from "./FloatingActionButton";
 import { Toaster } from "@/components/ui/sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
-import { reloadAll, setCloudUser, useCloudReady } from "@/lib/cloudStore";
+import { reloadAll, setCloudUser, useCloudReady, useCloudError } from "@/lib/cloudStore";
 import { LocalImportPrompt } from "./LocalImportPrompt";
 
 const PUBLIC_PATHS = ["/login", "/reset-password"];
@@ -17,6 +17,7 @@ export function AppLayout() {
   const navigate = useNavigate();
   const [auth, setAuth] = useState<"loading" | "in" | "out">("loading");
   const ready = useCloudReady();
+  const cloudError = useCloudError();
   const [config] = useConfig();
 
   useEffect(() => {
@@ -50,7 +51,13 @@ export function AppLayout() {
       <div className="flex-1 min-w-0 flex flex-col">
         <TopNavbar />
         <main className="flex-1 min-w-0 overflow-x-hidden">
-          {ready ? <Outlet /> : (
+          {ready ? <Outlet /> : cloudError ? (
+            <div className="mx-auto max-w-xl p-6 mt-12 rounded-xl border bg-card text-card-foreground space-y-3" role="alert">
+              <h2 className="font-semibold">Não foi possível carregar seus dados</h2>
+              <p className="text-sm text-muted-foreground">{cloudError}</p>
+              <Button onClick={() => void reloadAll()}>Tentar novamente</Button>
+            </div>
+          ) : (
             <div className="p-6 space-y-4" aria-label="Carregando dados">
               <Skeleton className="h-9 w-64" />
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-28" />)}</div>
