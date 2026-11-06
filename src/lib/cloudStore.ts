@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -9,6 +9,7 @@ export const SAVE_ERROR = "Não foi possível salvar. Verifique sua conexão e t
 
 type Entry = { data: unknown; loaded: boolean };
 const state = new Map<CloudTable, Entry>();
+const loadErrors = new Map<CloudTable, string>();
 const listeners = new Set<() => void>();
 let userId: string | null = null;
 let version = 0;
@@ -19,6 +20,7 @@ export function setCloudUser(id: string | null) {
   if (id === userId) return;
   userId = id;
   state.clear();
+  loadErrors.clear();
   emit();
   if (id) void reloadAll();
 }
@@ -42,14 +44,25 @@ export async function reloadAll() {
   const results = await Promise.allSettled(tables.map(fetchTable));
   if (uid !== userId) return;
   results.forEach((r, i) => {
-    if (r.status === "fulfilled") state.set(tables[i], { data: r.value, loaded: true });
-    else if (!state.get(tables[i])?.loaded) state.set(tables[i], { data: tables[i] === "configuracoes" ? null : [], loaded: true });
+    const table = tables[i];
+    if (r.status === "fulfilled") {
+      state.set(table, { data: r.value, loaded: true });
+      loadErrors.delete(table);
+    } else {
+      // A failed request must never be mistaken for an empty CRM collection.
+      state.set(table, { data: state.get(table)?.data ?? (table === "configuracoes" ? null : []), loaded: false });
+      loadErrors.set(table, "Não foi possível carregar seus dados. Verifique sua conexão e tente novamente.");
+    }
   });
   emit();
 }
 
 export const cloudReady = () => [...COLLECTION_TABLES, "configuracoes" as const].every((t) => state.get(t)?.loaded);
+export function cloudLoadError() {
+  return [...loadErrors.values()][0] ?? null;
+}
 export const useCloudReady = () => useSyncExternalStore(subscribe, () => (userId ? cloudReady() : false), () => false);
+export const useCloudError = () => useSyncExternalStore(subscribe, cloudLoadError, () => null);
 
 type Item = { id: string };
 export function diffCollection(prev: Item[], next: Item[]) {
@@ -96,7 +109,10 @@ const EMPTY: never[] = [];
 export function useCloudDocument<T extends object>(defaults: T) {
   useSyncExternalStore(subscribe, () => version, () => 0);
   const stored = state.get("configuracoes")?.data as Partial<T> | null | undefined;
-  const value = stored ? ({ ...defaults, ...stored } as T) : defaults;
+  // Keep the document reference stable between unrelated store notifications.
+  // ConfigPage syncs its local form from this value; recreating it on every render
+  // causes an effect -> setState -> render loop (Maximum update depth exceeded).
+  const value = useMemo(() => (stored ? ({ ...defaults, ...stored } as T) : defaults), [defaults, stored]);
   const save = useCallback((update: T | ((previous: T) => T)) => {
     if (!userId) return;
     const prevRaw = state.get("configuracoes")?.data as T | null;
