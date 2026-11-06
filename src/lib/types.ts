@@ -1,12 +1,6 @@
-export type Produto = "Imóvel" | "Veículo" | "Serviço" | "Moto" | "Investimento" | "Outros";
-export type Origem = "Meta Ads" | "Instagram" | "WhatsApp" | "Indicação" | "Orgânico" | "Outros";
-export type Etapa =
-  | "Novo Lead"
-  | "Contato Realizado"
-  | "Proposta Enviada"
-  | "Em Análise"
-  | "Fechado"
-  | "Perdido";
+export type Produto = string;
+export type Origem = string;
+export type Etapa = string;
 
 export type ClientePerfil = "Pessoa Física" | "Profissional Liberal" | "Empresário" | "Investidor";
 export type ClienteFase = "Lead" | "Recuperação" | "Cliente Ativo" | "Contemplado";
@@ -234,6 +228,7 @@ export interface Configuracoes {
   fundoReserva: number;
   comissao: number;
   valorSeguroDefault: number;
+  simuladorProdutos?: { produto: string; taxaAdmin: number; fundoReserva: number; comissao: number; valorSeguro: number }[];
   etapas?: EtapaItem[];
   produtosAtivos?: { nome: string; ativo: boolean }[];
   origens?: string[];
