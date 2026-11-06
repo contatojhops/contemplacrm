@@ -227,7 +227,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
                 <TableRow key={l.id}>
                   <TableCell className="font-medium">{l.nome}</TableCell>
                   <TableCell><PipelineBadge pipeline={pipelines.find(p=>p.id===l.pipeline_id)} /></TableCell>
-                  <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${produtoColor[l.produto]}`}>{l.produto}</span></TableCell>
+                  <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${produtoColor[l.produto] ?? "bg-muted text-muted-foreground border-border"}`}>{l.produto}</span></TableCell>
                   <TableCell>{l.origem}</TableCell>
                   <TableCell><Select value={l.etapa} onValueChange={v => move(l, v as Etapa)}><SelectTrigger aria-label={`Etapa de ${l.nome}`}><SelectValue /></SelectTrigger><SelectContent>{stages.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select></TableCell>
                   <TableCell><ScoreBadge score={calcScore(l)} /></TableCell>
