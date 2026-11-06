@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Lead, Produto, Origem } from "@/lib/types";
+import type { Lead, Produto, Origem, Etapa } from "@/lib/types";
 
 
 interface Props {
@@ -24,7 +24,12 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   const [config] = useConfig();
   const produtos = (config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome);
   const origens = config.origens ?? [];
+  const stages = (config.etapas ?? []).map(item => item.nome);
+  const defaultStage = stages.find(stage => !["Fechado", "Perdido"].includes(stage)) ?? "Novo Lead";
+  const stageOptions = initial ? stages : stages.filter(stage => !["Fechado", "Perdido"].includes(stage));
   const [form, setForm] = useState<Partial<Lead>>(initial ?? {
+    pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
+    etapa: defaultStage,
     nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0,
     origem: "WhatsApp", perfil: "", observacoes: "",
   });
@@ -32,13 +37,14 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   useEffect(() => {
     if (open) setForm(initial ?? {
       pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
+      etapa: defaultStage,
       nome: "", telefone: "", email: "",
       produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel",
       valorCarta: 0,
       origem: config.origens?.[0] ?? "WhatsApp",
       perfil: "", observacoes: "",
     });
-  }, [open, initial, defaultPipelineId, pipelines, config.produtosAtivos, config.origens]);
+  }, [open, initial, defaultPipelineId, pipelines, config.produtosAtivos, config.origens, defaultStage]);
 
   const update = (patch: Partial<Lead>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -46,10 +52,11 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
     if (!form.nome?.trim() || !form.telefone?.trim()) { toast.error("Preencha nome e telefone."); return; }
     if ((form.valorCarta ?? 0) < 0) { toast.error("Informe um valor válido."); return; }
     if (!form.pipeline_id || !pipelines.some(p=>p.id===form.pipeline_id && (!p.arquivada || p.id===initial?.pipeline_id))) { toast.error("Selecione uma pipeline disponível."); return; }
+    if (!form.etapa || !stageOptions.includes(form.etapa)) { toast.error("Selecione uma etapa válida."); return; }
     const now = new Date().toISOString();
     const lead: Lead = {
       ...initial,
-      stage_changed_at: initial?.stage_changed_at ?? now,
+      stage_changed_at: initial && form.etapa !== initial.etapa ? now : initial?.stage_changed_at ?? now,
       pipeline_id: form.pipeline_id,
       id: initial?.id ?? crypto.randomUUID(),
       nome: form.nome.trim(),
@@ -58,11 +65,11 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
       produto: form.produto as Produto,
       valorCarta: Number(form.valorCarta) || 0,
       origem: form.origem as Origem,
-      etapa: initial?.etapa ?? "Novo Lead",
+      etapa: (form.etapa as Etapa) ?? defaultStage,
       perfil: form.perfil,
       observacoes: form.observacoes,
       ultimoContato: initial?.ultimoContato ?? now,
-      diasNaEtapa: initial?.diasNaEtapa ?? 0,
+      diasNaEtapa: initial && form.etapa !== initial.etapa ? 0 : initial?.diasNaEtapa ?? 0,
       criadoEm: initial?.criadoEm ?? now,
       respondeuMensagem: initial?.respondeuMensagem,
       reuniaoAgendada: initial?.reuniaoAgendada,
@@ -113,6 +120,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
             </Select>
           </div>
           <div className="col-span-2"><Label>Pipeline</Label><Select value={form.pipeline_id} onValueChange={v=>update({pipeline_id:v})}><SelectTrigger aria-label="Pipeline do lead"><SelectValue placeholder="Selecione a pipeline" /></SelectTrigger><SelectContent>{pipelines.filter(p=>!p.arquivada || p.id===initial?.pipeline_id).map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select></div>
+          <div className="col-span-2"><Label>{initial ? "Etapa atual no Kanban" : "Etapa inicial no Kanban"}</Label><Select value={form.etapa ?? defaultStage} onValueChange={v=>update({etapa:v})}><SelectTrigger aria-label="Etapa do lead"><SelectValue placeholder="Selecione a etapa" /></SelectTrigger><SelectContent>{stageOptions.map(stage=><SelectItem key={stage} value={stage}>{stage}</SelectItem>)}</SelectContent></Select></div>
           <div className="col-span-2">
             <Label>Perfil do cliente</Label>
             <Input value={form.perfil ?? ""} onChange={(e) => update({ perfil: e.target.value })} />
