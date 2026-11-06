@@ -32,7 +32,7 @@ function ConfigPage() {
   const [novoTemplate, setNovoTemplate] = useState<Template>({ id: "", nome: "", canal: "WhatsApp", texto: "" });
 
   const save = () => {
-    if (!form.consultorNome.trim() || [form.metaMensal, form.taxaAdmin, form.fundoReserva, form.comissao].some(v => !Number.isFinite(v) || v < 0)) { toast.error("Confira os campos do consultor e os valores."); return; }
+    if (!form.consultorNome.trim() || [form.metaMensal, form.taxaAdmin, form.fundoReserva, form.comissao, ...(form.simuladorProdutos ?? []).flatMap(p => [p.taxaAdmin, p.fundoReserva, p.comissao, p.valorSeguro])].some(v => !Number.isFinite(v) || v < 0)) { toast.error("Confira os campos do consultor e os valores."); return; }
     const oldStages = config.etapas ?? [];
     const nextStages = form.etapas ?? [];
     const stageNames = new Map(oldStages.filter(s => s.id).map(s => [s.id, nextStages.find(n => n.id === s.id)?.nome ?? s.nome]));
@@ -45,11 +45,16 @@ function ConfigPage() {
     }
     const oldProducts = config.produtosAtivos ?? [];
     const nextProducts = form.produtosAtivos ?? [];
-    const productNames = new Map(oldProducts.map((p, i) => [p.nome, nextProducts[i]?.nome ?? p.nome]));
-    if ([...productNames].some(([a,b]) => a !== b)) {
-      setLeads(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
-      setClientes(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
-      setPropostas(prev => prev.map(p => ({ ...p, produto: productNames.get(p.produto) ?? p.produto })));
+    // Positional rename is safe only when the list length is unchanged; additions/removals
+    // must not accidentally rename records belonging to the next product in the list.
+    if (oldProducts.length === nextProducts.length) {
+      const productNames = new Map(oldProducts.map((p, i) => [p.nome, nextProducts[i].nome]));
+      if ([...productNames].some(([a,b]) => a !== b)) {
+        setLeads(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
+        setClientes(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
+        setPropostas(prev => prev.map(p => ({ ...p, produto: productNames.get(p.produto) ?? p.produto })));
+        form.simuladorProdutos = (form.simuladorProdutos ?? []).map(item => ({ ...item, produto: productNames.get(item.produto) ?? item.produto }));
+      }
     }
     setConfig(form);
     toast.success("Configurações salvas e aplicadas ao CRM!");
