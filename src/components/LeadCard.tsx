@@ -8,7 +8,7 @@ import { calcScore, scoreColor, formatBRL } from "@/lib/scoring";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const produtoColor: Record<Produto, string> = {
+const produtoColor: Record<string, string> = {
   "Imóvel": "bg-blue-500/15 text-blue-700 border-blue-500/30",
   "Veículo": "bg-orange-500/15 text-orange-700 border-orange-500/30",
   "Serviço": "bg-purple-500/15 text-purple-700 border-purple-500/30",
@@ -56,7 +56,7 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
       </div>
       {showPipeline && <PipelineBadge pipeline={pipeline} />}
       <div className="flex flex-wrap gap-1">
-        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${produtoColor[lead.produto]}`}>{lead.produto}</span>
+        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${produtoColor[lead.produto] ?? "bg-muted text-muted-foreground border-border"}`}>{lead.produto}</span>
       </div>
       <div className="text-xs text-muted-foreground">
         {lead.origem} · {formatBRL(lead.valorCarta)}
