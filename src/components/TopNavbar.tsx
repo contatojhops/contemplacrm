@@ -4,11 +4,19 @@ import { FEATURES } from "@/lib/features";
 import { MobileNavigation } from "./MobileNavigation";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, CalendarClock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLeads, useClientes, usePropostas, useTarefas, useConfig } from "@/lib/store";
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  detail: string;
+  overdue: boolean;
+  priority?: string;
+};
 
 export function TopNavbar() {
   const [leads] = useLeads();
@@ -35,24 +43,59 @@ export function TopNavbar() {
     return out.slice(0, 8);
   }, [q, leads, clientes, propostas]);
 
-  const notifications = useMemo(() => {
-    const list: { id: string; texto: string; tipo: string }[] = [];
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    leads.forEach((l) => {
-      if (l.proximoFollowUp && localDate(l.proximoFollowUp) < today && !["Fechado", "Perdido"].includes(l.etapa)) {
-        list.push({ id: `f${l.id}`, texto: `Follow-up com ${l.nome} está atrasado`, tipo: "atraso" });
-      }
-      const dias = (Date.now() - localDate(l.ultimoContato).getTime()) / 86400000;
-      if (dias > 7 && !["Fechado", "Perdido"].includes(l.etapa)) {
-        list.push({ id: `c${l.id}`, texto: `${l.nome} sem contato há ${Math.floor(dias)} dias`, tipo: "contato" });
-      }
-    });
-    const tHoje = tarefas.filter((t) => !t.concluida && localDate(t.data).toDateString() === new Date().toDateString());
-    if (tHoje.length > 0) list.push({ id: "thoje", texto: `Você tem ${tHoje.length} tarefa(s) para hoje`, tipo: "tarefa" });
-    return list.slice(0, 10);
+  const notifications = useMemo<NotificationItem[]>(() => {
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const taskNotifications = tarefas
+      .filter((task) => {
+        if (task.concluida) return false;
+        const due = localDate(task.data);
+        return due < tomorrow;
+      })
+      .map((task) => {
+        const due = localDate(task.data);
+        const overdue = due < today;
+        const leadName = leads.find((lead) => lead.id === task.lead_id)?.nome ?? task.cliente ?? "Lead sem vínculo";
+        const time = due.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        const dateLabel = overdue
+          ? due.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+          : "Hoje";
+        return {
+          id: task.id,
+          title: task.titulo,
+          detail: `${leadName} · ${dateLabel} às ${time}`,
+          overdue,
+          priority: task.prioridade,
+        };
+      })
+      .sort((a, b) => Number(b.overdue) - Number(a.overdue));
+
+    const staleLeadNotifications: NotificationItem[] = leads
+      .filter((lead) => {
+        if (["Fechado", "Perdido"].includes(lead.etapa)) return false;
+        if (!lead.ultimoContato) return false;
+        const days = (now.getTime() - localDate(lead.ultimoContato).getTime()) / 86400000;
+        return days > 7;
+      })
+      .map((lead) => {
+        const days = Math.floor((now.getTime() - localDate(lead.ultimoContato).getTime()) / 86400000);
+        return {
+          id: `stale-${lead.id}`,
+          title: `Retomar contato com ${lead.nome}`,
+          detail: `Sem contato há ${days} dias · ${lead.etapa}`,
+          overdue: true,
+        };
+      });
+
+    return [...taskNotifications, ...staleLeadNotifications].slice(0, 12);
   }, [leads, tarefas]);
 
   const initials = (config.consultorNome || "?").split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("");
+  const openAgenda = () => navigate({ to: "/agenda" });
 
   return (
     <header className="sticky top-0 z-30 h-14 border-b bg-card/80 backdrop-blur flex items-center gap-3 px-4">
@@ -83,13 +126,41 @@ export function TopNavbar() {
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-80 p-0">
-          <div className="px-3 py-2 border-b text-sm font-semibold">Notificações</div>
+        <PopoverContent align="end" className="w-[min(22rem,calc(100vw-1.5rem))] p-0">
+          <div className="px-3 py-3 border-b flex items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-semibold">Sua rotina</div>
+              <div className="text-xs text-muted-foreground">{notifications.length} item(ns) exigem atenção</div>
+            </div>
+            <Badge variant={notifications.some((item) => item.overdue) ? "destructive" : "secondary"}>{notifications.length}</Badge>
+          </div>
           <div className="max-h-80 overflow-y-auto">
-            {notifications.length === 0 && <div className="p-4 text-sm text-muted-foreground">Sem notificações 🎉</div>}
-            {notifications.map((n) => (
-              <div key={n.id} className="px-3 py-2 text-sm border-b last:border-0 hover:bg-accent">{n.texto}</div>
+            {notifications.length === 0 && (
+              <div className="p-5 text-center">
+                <CheckCircle2 className="h-6 w-6 mx-auto mb-2 text-success" />
+                <p className="text-sm font-medium">Tudo em dia!</p>
+                <p className="text-xs text-muted-foreground mt-1">Não há tarefas para hoje ou atrasadas.</p>
+              </div>
+            )}
+            {notifications.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={openAgenda}
+                className="w-full px-3 py-3 text-left border-b last:border-0 hover:bg-accent transition-colors flex items-start gap-2"
+              >
+                {item.overdue ? <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" /> : <CalendarClock className="h-4 w-4 mt-0.5 text-primary shrink-0" />}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium leading-snug">{item.title}</span>
+                  <span className="block text-xs text-muted-foreground mt-1">{item.detail}</span>
+                  {item.priority && <span className="block text-[11px] text-muted-foreground mt-1">Prioridade: {item.priority}</span>}
+                </span>
+                {item.overdue && <Badge variant="destructive" className="shrink-0">Atrasada</Badge>}
+              </button>
             ))}
+          </div>
+          <div className="p-2 border-t">
+            <Button className="w-full" size="sm" onClick={openAgenda}>Ver todas as tarefas</Button>
           </div>
         </PopoverContent>
       </Popover>
