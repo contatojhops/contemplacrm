@@ -49,7 +49,7 @@ function ConfigPage() {
     if (oldOrigins.length === nextOrigins.length) {
       const originNames = new Map(oldOrigins.map((origin, i) => [origin, nextOrigins[i]]));
       if ([...originNames].some(([a,b]) => a !== b)) {
-        setLeads(prev => prev.map(l => ({ ...l, origem: originNames.get(l.origem) ?? l.origem })));
+        setLeads(prev => prev.map(l => ({ ...l, origem: originNames.get(l.origem) ?? l.origem, detalhesCliente: l.detalhesCliente ? { ...l.detalhesCliente, origem: l.detalhesCliente.origem ? originNames.get(l.detalhesCliente.origem) ?? l.detalhesCliente.origem : l.detalhesCliente.origem } : l.detalhesCliente })));
         setClientes(prev => prev.map(c => ({ ...c, origem: c.origem ? originNames.get(c.origem) ?? c.origem : c.origem })));
       }
     }
@@ -60,7 +60,7 @@ function ConfigPage() {
     if (oldProducts.length === nextProducts.length) {
       const productNames = new Map(oldProducts.map((p, i) => [p.nome, nextProducts[i].nome]));
       if ([...productNames].some(([a,b]) => a !== b)) {
-        setLeads(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
+        setLeads(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto, detalhesCliente: l.detalhesCliente ? { ...l.detalhesCliente, produto: productNames.get(l.detalhesCliente.produto ?? "") ?? l.detalhesCliente.produto } : l.detalhesCliente })));
         setClientes(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
         setPropostas(prev => prev.map(p => ({ ...p, produto: productNames.get(p.produto) ?? p.produto })));
         nextForm.simuladorProdutos = (form.simuladorProdutos ?? []).map(item => ({ ...item, produto: productNames.get(item.produto) ?? item.produto }));
