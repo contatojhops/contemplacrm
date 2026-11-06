@@ -21,7 +21,7 @@ export function FloatingActionButton() {
         <Button
           key={it.label}
           onClick={() => { navigate({ to: it.to }); setOpen(false); }}
-          className="flex items-center gap-2 bg-card border rounded-full shadow-lg pl-3 pr-4 py-2 text-sm hover:bg-accent animate-in slide-in-from-bottom-2"
+          className="flex items-center gap-2 bg-card text-card-foreground border rounded-full shadow-lg pl-3 pr-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground animate-in slide-in-from-bottom-2"
         >
           <it.icon className="h-4 w-4 text-primary" /> {it.label}
         </Button>
