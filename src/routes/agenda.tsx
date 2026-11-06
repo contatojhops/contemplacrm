@@ -117,6 +117,7 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
       prioridade: form.prioridade as TarefaPrioridade,
       descricao: form.descricao,
       lembrete: form.lembrete,
+      proximaAcaoId: initial?.proximaAcaoId,
     };
     onSave(t);
     onOpenChange(false);
@@ -236,20 +237,63 @@ function CalendarView({ tarefas, onDayClick }: { tarefas: Tarefa[]; onDayClick: 
 
 function AgendaPage() {
   const [savedTasks, setTarefas] = useTarefas();
-  const [leads] = useLeads();
+  const [leads, setLeads] = useLeads();
   const tarefas = savedTasks.map(t=>({...t,cliente:leads.find(l=>l.id===t.lead_id)?.nome ?? t.cliente}));
   const [view, setView] = useState<"calendario" | "lista">("lista");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Tarefa | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
-  const toggle = (id: string) => setTarefas((prev) => prev.map((t) => t.id === id ? { ...t, concluida: !t.concluida } : t));
-  const remove = (id: string) => { if (confirm(DELETE_CONFIRMATION)) { setTarefas(prev => prev.filter(t => t.id !== id)); toast.success("Tarefa excluída"); } };
+  const toggle = (id: string) => {
+    const task = savedTasks.find(t => t.id === id);
+    if (!task) return;
+    const completed = !task.concluida;
+    setTarefas(prev => prev.map(t => t.id === id ? { ...t, concluida: completed } : t));
+    if (task.proximaAcaoId) {
+      setLeads(prev => prev.map(lead => {
+        if (lead.id !== task.lead_id) return lead;
+        const details = lead.detalhesCliente ?? {};
+        if (completed) {
+          const action = details.proximaAcao;
+          if (action?.id !== task.proximaAcaoId) return lead;
+          return { ...lead, detalhesCliente: {
+            ...details,
+            proximaAcao: undefined,
+            acoesConcluidas: [...(details.acoesConcluidas ?? []), { id: action.id, data: new Date().toISOString(), tipo: action.tipo, descricao: action.descricao }],
+          } };
+        }
+        const date = localDate(task.data);
+        const hora = date.toTimeString().slice(0, 5);
+        return { ...lead, detalhesCliente: {
+          ...details,
+          proximaAcao: { id: task.proximaAcaoId, data: task.data, hora, tipo: task.tipo, descricao: task.descricao ?? task.titulo },
+          acoesConcluidas: (details.acoesConcluidas ?? []).filter(action => action.id !== task.proximaAcaoId),
+        } };
+      }));
+    }
+  };
+  const remove = (id: string) => {
+    if (!confirm(DELETE_CONFIRMATION)) return;
+    const task = savedTasks.find(t => t.id === id);
+    setTarefas(prev => prev.filter(t => t.id !== id));
+    if (task?.proximaAcaoId) {
+      setLeads(prev => prev.map(lead => lead.id === task.lead_id && lead.detalhesCliente?.proximaAcao?.id === task.proximaAcaoId
+        ? { ...lead, detalhesCliente: { ...lead.detalhesCliente, proximaAcao: undefined } }
+        : lead));
+    }
+    toast.success("Tarefa excluída");
+  };
   const save = (t: Tarefa) => {
     setTarefas((prev) => {
       const ex = prev.some((p) => p.id === t.id);
       return ex ? prev.map((p) => p.id === t.id ? t : p) : [t, ...prev];
     });
+    if (t.proximaAcaoId) {
+      const date = localDate(t.data);
+      setLeads(prev => prev.map(lead => lead.id === t.lead_id && lead.detalhesCliente?.proximaAcao?.id === t.proximaAcaoId
+        ? { ...lead, detalhesCliente: { ...lead.detalhesCliente, proximaAcao: { ...lead.detalhesCliente.proximaAcao, data: t.data, hora: date.toTimeString().slice(0, 5), tipo: t.tipo, descricao: t.descricao ?? t.titulo } } }
+        : lead));
+    }
     toast.success(editing ? "Tarefa atualizada!" : "Tarefa criada!");
     setEditing(null);
   };
@@ -257,6 +301,11 @@ function AgendaPage() {
     const newDate = new Date(); newDate.setDate(newDate.getDate() + 1);
     const original = localDate(t.data); newDate.setHours(original.getHours(), original.getMinutes(), 0, 0);
     setTarefas((prev) => prev.map((p) => p.id === t.id ? { ...p, data: newDate.toISOString() } : p));
+    if (t.proximaAcaoId) {
+      setLeads(prev => prev.map(lead => lead.id === t.lead_id && lead.detalhesCliente?.proximaAcao?.id === t.proximaAcaoId
+        ? { ...lead, detalhesCliente: { ...lead.detalhesCliente, proximaAcao: { ...lead.detalhesCliente.proximaAcao, data: newDate.toISOString(), hora: newDate.toTimeString().slice(0, 5) } } }
+        : lead));
+    }
     toast.success("Reagendada para amanhã");
   };
 
