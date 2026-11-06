@@ -28,6 +28,8 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   const defaultStage = stages.find(stage => !["Fechado", "Perdido"].includes(stage)) ?? "Novo Lead";
   const stageOptions = initial ? stages : stages.filter(stage => !["Fechado", "Perdido"].includes(stage));
   const [form, setForm] = useState<Partial<Lead>>(initial ?? {
+    pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
+    etapa: defaultStage,
     nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0,
     origem: "WhatsApp", perfil: "", observacoes: "",
   });
@@ -35,6 +37,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   useEffect(() => {
     if (open) setForm(initial ?? {
       pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
+      etapa: defaultStage,
       nome: "", telefone: "", email: "",
       produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel",
       valorCarta: 0,
