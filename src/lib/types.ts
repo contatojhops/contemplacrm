@@ -132,6 +132,7 @@ export interface Cliente {
   objetivo?: string;
   capacidadeMensal?: number;
   temperatura?: "Frio" | "Morno" | "Quente";
+  atualizacoes?: string;
 }
 
 export type TarefaTipo = "Ligação" | "WhatsApp" | "Reunião" | "E-mail" | "Visita" | "Follow-up" | "Enviar Proposta" | "Recontato" | "Outro";
