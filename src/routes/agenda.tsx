@@ -92,7 +92,7 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
   initial: Tarefa | null;
   onSave: (t: Tarefa) => void;
 }) {
-  const [leads] = useLeads();
+  const [leads, setLeads] = useLeads();
   const [leadSearch,setLeadSearch] = useState("");
   const [form, setForm] = useState<Partial<Tarefa>>(initial ?? {
     titulo: "", tipo: "Follow-up", cliente: "", data: new Date().toISOString(), concluida: false, prioridade: "Média", descricao: "", lembrete: false,
@@ -243,7 +243,34 @@ function AgendaPage() {
   const [editing, setEditing] = useState<Tarefa | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
-  const toggle = (id: string) => setTarefas((prev) => prev.map((t) => t.id === id ? { ...t, concluida: !t.concluida } : t));
+  const toggle = (id: string) => {
+    const task = savedTasks.find(t => t.id === id);
+    if (!task) return;
+    const completed = !task.concluida;
+    setTarefas(prev => prev.map(t => t.id === id ? { ...t, concluida: completed } : t));
+    if (task.proximaAcaoId) {
+      setLeads(prev => prev.map(lead => {
+        if (lead.id !== task.lead_id) return lead;
+        const details = lead.detalhesCliente ?? {};
+        if (completed) {
+          const action = details.proximaAcao;
+          if (action?.id !== task.proximaAcaoId) return lead;
+          return { ...lead, detalhesCliente: {
+            ...details,
+            proximaAcao: undefined,
+            acoesConcluidas: [...(details.acoesConcluidas ?? []), { id: action.id, data: new Date().toISOString(), tipo: action.tipo, descricao: action.descricao }],
+          } };
+        }
+        const date = localDate(task.data);
+        const hora = date.toTimeString().slice(0, 5);
+        return { ...lead, detalhesCliente: {
+          ...details,
+          proximaAcao: { id: task.proximaAcaoId, data: task.data, hora, tipo: task.tipo, descricao: task.descricao ?? task.titulo },
+          acoesConcluidas: (details.acoesConcluidas ?? []).filter(action => action.id !== task.proximaAcaoId),
+        } };
+      }));
+    }
+  };
   const remove = (id: string) => { if (confirm(DELETE_CONFIRMATION)) { setTarefas(prev => prev.filter(t => t.id !== id)); toast.success("Tarefa excluída"); } };
   const save = (t: Tarefa) => {
     setTarefas((prev) => {
