@@ -3,12 +3,12 @@ import { localDate } from "@/lib/crm";
 import { FEATURES } from "@/lib/features";
 import { MobileNavigation } from "./MobileNavigation";
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Bell, Search, Settings, CalendarClock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useLeads, useClientes, usePropostas, useTarefas, useConfig } from "@/lib/store";
+import { useLeads, useClientes, usePropostas, useTarefas } from "@/lib/store";
 
 type NotificationItem = {
   id: string;
