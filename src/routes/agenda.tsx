@@ -117,6 +117,7 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
       prioridade: form.prioridade as TarefaPrioridade,
       descricao: form.descricao,
       lembrete: form.lembrete,
+      proximaAcaoId: initial?.proximaAcaoId,
     };
     onSave(t);
     onOpenChange(false);
@@ -271,7 +272,17 @@ function AgendaPage() {
       }));
     }
   };
-  const remove = (id: string) => { if (confirm(DELETE_CONFIRMATION)) { setTarefas(prev => prev.filter(t => t.id !== id)); toast.success("Tarefa excluída"); } };
+  const remove = (id: string) => {
+    if (!confirm(DELETE_CONFIRMATION)) return;
+    const task = savedTasks.find(t => t.id === id);
+    setTarefas(prev => prev.filter(t => t.id !== id));
+    if (task?.proximaAcaoId) {
+      setLeads(prev => prev.map(lead => lead.id === task.lead_id && lead.detalhesCliente?.proximaAcao?.id === task.proximaAcaoId
+        ? { ...lead, detalhesCliente: { ...lead.detalhesCliente, proximaAcao: undefined } }
+        : lead));
+    }
+    toast.success("Tarefa excluída");
+  };
   const save = (t: Tarefa) => {
     setTarefas((prev) => {
       const ex = prev.some((p) => p.id === t.id);
@@ -284,6 +295,11 @@ function AgendaPage() {
     const newDate = new Date(); newDate.setDate(newDate.getDate() + 1);
     const original = localDate(t.data); newDate.setHours(original.getHours(), original.getMinutes(), 0, 0);
     setTarefas((prev) => prev.map((p) => p.id === t.id ? { ...p, data: newDate.toISOString() } : p));
+    if (t.proximaAcaoId) {
+      setLeads(prev => prev.map(lead => lead.id === t.lead_id && lead.detalhesCliente?.proximaAcao?.id === t.proximaAcaoId
+        ? { ...lead, detalhesCliente: { ...lead.detalhesCliente, proximaAcao: { ...lead.detalhesCliente.proximaAcao, data: newDate.toISOString(), hora: newDate.toTimeString().slice(0, 5) } } }
+        : lead));
+    }
     toast.success("Reagendada para amanhã");
   };
 
