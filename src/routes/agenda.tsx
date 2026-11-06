@@ -290,9 +290,25 @@ function AgendaPage() {
     });
     if (t.proximaAcaoId) {
       const date = localDate(t.data);
-      setLeads(prev => prev.map(lead => lead.id === t.lead_id && lead.detalhesCliente?.proximaAcao?.id === t.proximaAcaoId
-        ? { ...lead, detalhesCliente: { ...lead.detalhesCliente, proximaAcao: { ...lead.detalhesCliente.proximaAcao, data: t.data, hora: date.toTimeString().slice(0, 5), tipo: t.tipo, descricao: t.descricao ?? t.titulo } } }
-        : lead));
+      setLeads(prev => prev.map(lead => {
+        if (lead.id !== t.lead_id) return lead;
+        const details = lead.detalhesCliente;
+        const action = details?.proximaAcao;
+        if (!details || action?.id !== t.proximaAcaoId) return lead;
+        return {
+          ...lead,
+          detalhesCliente: {
+            ...details,
+            proximaAcao: {
+              ...action,
+              data: t.data,
+              hora: date.toTimeString().slice(0, 5),
+              tipo: t.tipo,
+              descricao: t.descricao ?? t.titulo,
+            },
+          },
+        };
+      }));
     }
     toast.success(editing ? "Tarefa atualizada!" : "Tarefa criada!");
     setEditing(null);
@@ -302,9 +318,23 @@ function AgendaPage() {
     const original = localDate(t.data); newDate.setHours(original.getHours(), original.getMinutes(), 0, 0);
     setTarefas((prev) => prev.map((p) => p.id === t.id ? { ...p, data: newDate.toISOString() } : p));
     if (t.proximaAcaoId) {
-      setLeads(prev => prev.map(lead => lead.id === t.lead_id && lead.detalhesCliente?.proximaAcao?.id === t.proximaAcaoId
-        ? { ...lead, detalhesCliente: { ...lead.detalhesCliente, proximaAcao: { ...lead.detalhesCliente.proximaAcao, data: newDate.toISOString(), hora: newDate.toTimeString().slice(0, 5) } } }
-        : lead));
+      setLeads(prev => prev.map(lead => {
+        if (lead.id !== t.lead_id) return lead;
+        const details = lead.detalhesCliente;
+        const action = details?.proximaAcao;
+        if (!details || action?.id !== t.proximaAcaoId) return lead;
+        return {
+          ...lead,
+          detalhesCliente: {
+            ...details,
+            proximaAcao: {
+              ...action,
+              data: newDate.toISOString(),
+              hora: newDate.toTimeString().slice(0, 5),
+            },
+          },
+        };
+      }));
     }
     toast.success("Reagendada para amanhã");
   };
