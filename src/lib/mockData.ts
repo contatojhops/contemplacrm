@@ -40,6 +40,14 @@ export const defaultConfig: Configuracoes = {
   fundoReserva: 1,
   comissao: 1.5,
   valorSeguroDefault: 35,
+  simuladorProdutos: [
+    { produto: "Imóvel", taxaAdmin: 18, fundoReserva: 1, comissao: 1.5, valorSeguro: 35 },
+    { produto: "Veículo", taxaAdmin: 18, fundoReserva: 1, comissao: 1.5, valorSeguro: 35 },
+    { produto: "Moto", taxaAdmin: 18, fundoReserva: 1, comissao: 1.5, valorSeguro: 35 },
+    { produto: "Serviço", taxaAdmin: 18, fundoReserva: 1, comissao: 1.5, valorSeguro: 35 },
+    { produto: "Investimento", taxaAdmin: 18, fundoReserva: 1, comissao: 1.5, valorSeguro: 35 },
+    { produto: "Outros", taxaAdmin: 18, fundoReserva: 1, comissao: 1.5, valorSeguro: 35 },
+  ],
   etapas: defaultEtapas,
   produtosAtivos: [
     { nome: "Imóvel", ativo: true },
