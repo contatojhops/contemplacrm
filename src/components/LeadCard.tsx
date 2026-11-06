@@ -91,3 +91,13 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
 }
 
 export { produtoColor };
+
+// Mantém compatibilidade com as telas de Clientes, que ainda exibem o score.
+// O score foi removido apenas dos cartões do Kanban.
+export function ScoreBadge({ score }: { score: number }) {
+  return (
+    <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+      {score}
+    </span>
+  );
+}
