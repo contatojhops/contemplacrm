@@ -52,7 +52,7 @@ export function TopNavbar() {
     return list.slice(0, 10);
   }, [leads, tarefas]);
 
-  const initials = config.consultorNome.split(" ").map((n) => n[0]).slice(0, 2).join("");
+  const initials = (config.consultorNome || "?").split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("");
 
   return (
     <header className="sticky top-0 z-30 h-14 border-b bg-card/80 backdrop-blur flex items-center gap-3 px-4">

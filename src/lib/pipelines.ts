@@ -24,12 +24,19 @@ export function periodRange(period: Period, now = new Date()) {
   return { start, end, previousStart, previousEnd };
 }
 export function inRange(date: string | undefined, start: Date, end: Date) { if (!date) return false; const d = localDate(date); return d >= start && d <= end; }
-export function metrics(leads: Lead[], start: Date, end: Date) {
+export function currentStatus(leads: Lead[]) {
+  const active = leads.filter(activeLead);
+  return { ativos: active.length, emProposta: active.filter(l => ['Proposta Enviada','Em Análise'].includes(l.etapa)).length, aberto: active.reduce((s,l)=>s+l.valorCarta,0) };
+}
+export function periodMetrics(leads: Lead[], start: Date, end: Date) {
   const created = leads.filter(l => inRange(l.criadoEm,start,end));
-  const active = created.filter(activeLead);
   const closed = leads.filter(l => l.etapa === 'Fechado' && inRange(l.closed_at,start,end));
-  const lost = created.filter(l => l.etapa === 'Perdido');
-  return { leads: created.length, ativos: active.length, emProposta: active.filter(l => ['Proposta Enviada','Em Análise'].includes(l.etapa)).length, fechados: closed.length, perdidos: lost.length, conversao: created.length ? created.filter(l => l.etapa === 'Fechado').length/created.length*100 : 0, aberto: active.reduce((s,l)=>s+l.valorCarta,0), fechado: closed.reduce((s,l)=>s+l.valorCarta,0) };
+  const lost = leads.filter(l => l.etapa === 'Perdido' && inRange(l.stage_changed_at,start,end));
+  return { leads: created.length, fechados: closed.length, perdidos: lost.length, conversao: closed.length+lost.length ? closed.length/(closed.length+lost.length)*100 : 0, fechado: closed.reduce((s,l)=>s+l.valorCarta,0) };
+}
+/** Current-status figures ignore the period; flow figures (captured, closed, lost, conversion) use it. */
+export function metrics(leads: Lead[], start: Date, end: Date) {
+  return { ...currentStatus(leads), ...periodMetrics(leads,start,end) };
 }
 export function leadCsv(leads: Lead[], pipelines: Pipeline[]) {
   const quote = (value: unknown) => `"${String(value ?? '').replace(/"/g,'""')}"`;

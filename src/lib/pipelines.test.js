@@ -13,4 +13,7 @@ describe('pipelines',()=>{
  it('uses closure date for sales',()=>{const r=periodRange('mes',new Date('2026-11-04T12:00:00'));expect(metrics([{...lead,criadoEm:'2026-01-01',etapa:'Fechado',closed_at:'2026-11-03'}],r.start,r.end).fechado).toBe(100000);});
  it('exports pipeline column',()=>expect(leadCsv([lead],[a])).toContain('"Pipeline"'));
  it('exports pipeline name',()=>expect(leadCsv([{...lead,pipeline_id:'b'}],[a,b])).toContain('"Evento X"'));
+ it('ignores period for active leads',()=>{const r=periodRange('mes',new Date('2026-11-04T12:00:00'));expect(metrics([{...lead,criadoEm:'2025-01-01'}],r.start,r.end).ativos).toBe(1);});
+ it('conversion is closed over closed plus lost',()=>{const r=periodRange('mes',new Date('2026-11-04T12:00:00'));expect(metrics([{...lead,etapa:'Fechado',closed_at:'2026-11-02'},{...lead,id:'x',etapa:'Perdido',stage_changed_at:'2026-11-02'},{...lead,id:'y',etapa:'Perdido',stage_changed_at:'2026-11-03'}],r.start,r.end).conversao).toBeCloseTo(33.33,1);});
+ it('counts lost by stage change date',()=>{const r=periodRange('mes',new Date('2026-11-04T12:00:00'));expect(metrics([{...lead,etapa:'Perdido',criadoEm:'2026-11-01',stage_changed_at:'2026-09-01'}],r.start,r.end).perdidos).toBe(0);});
 });
