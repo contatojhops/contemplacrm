@@ -56,8 +56,6 @@ function ClienteProfilePage() {
   const [leads, setLeads] = useLeads();
   const [propostas] = usePropostas();
   const [config] = useConfig();
-  const produtos = [...new Set([...(config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome), ...(cliente?.produto ? [cliente.produto] : [])])];
-  const origens = [...new Set([...(config.origens ?? []), ...(cliente?.origem ? [cliente.origem] : [])])];
 
   // Resolver cliente: pode vir de leads (id começa com lead_)
   const fromLead = id.startsWith("lead_");
@@ -81,6 +79,8 @@ function ClienteProfilePage() {
   const [interacaoModal, setInteracaoModal] = useState(false);
   const [objecaoModal, setObjecaoModal] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const produtos = [...new Set([...(config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome), ...(cliente?.produto ? [cliente.produto] : [])])];
+  const origens = [...new Set([...(config.origens ?? []), ...(cliente?.origem ? [cliente.origem] : [])])];
 
   if (!cliente) {
     return (
