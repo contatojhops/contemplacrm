@@ -1,9 +1,10 @@
 import { PipelineBadge } from "./PipelineBadge";
+import { Badge } from "@/components/ui/badge";
 import { stageDays, localDate } from "@/lib/crm";
 import type { Lead, Produto, Pipeline } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Pencil, ArrowRight, Calendar, ArrowRightLeft } from "lucide-react";
-import { formatBRL } from "@/lib/scoring";
+import { formatBRL, scoreColor } from "@/lib/scoring";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -14,6 +15,12 @@ const produtoColor: Record<string, string> = {
   "Moto": "bg-yellow-500/15 text-yellow-800 border-yellow-500/30",
   "Investimento": "bg-green-500/15 text-green-700 border-green-500/30",
   "Outros": "bg-gray-500/15 text-gray-700 border-gray-500/30",
+};
+
+const scoreClass: Record<ReturnType<typeof scoreColor>, string> = {
+  red: "bg-destructive text-destructive-foreground",
+  yellow: "bg-warning text-warning-foreground",
+  green: "bg-success text-success-foreground",
 };
 
 const temperaturaClass: Record<string, string> = {
@@ -91,3 +98,10 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
 }
 
 export { produtoColor };
+
+// Mantém compatibilidade com as telas de Clientes, que ainda exibem o score.
+// O cartão do Kanban continua usando temperatura.
+export function ScoreBadge({ score }: { score: number }) {
+  const color = scoreColor(score);
+  return <Badge className={scoreClass[color]}>{score}</Badge>;
+}
