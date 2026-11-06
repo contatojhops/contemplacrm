@@ -31,7 +31,7 @@ export function Sidebar() {
   const initials = (config.consultorNome || "?").split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("");
 
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
+    <aside className="hidden lg:flex sticky top-0 h-screen w-64 shrink-0 self-start flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       <div className="px-6 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
           <div className="h-9 w-9 rounded-lg bg-sidebar-primary flex items-center justify-center text-sidebar-primary-foreground font-bold">
@@ -43,7 +43,7 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="min-h-0 flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.filter(it => featureEnabled(it.to)).map((it) => {
           const active = it.to === "/" ? path === "/" : path.startsWith(it.to);
           return (
