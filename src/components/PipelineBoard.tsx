@@ -1,5 +1,5 @@
 import { PipelineBadge } from "./PipelineBadge";
-import { ETAPAS, metrics, periodRange, inRange, leadCsv, type Period } from "@/lib/pipelines";
+import { metrics, periodRange, inRange, leadCsv, type Period } from "@/lib/pipelines";
 import { Download } from "lucide-react";
 import { changeStage, DELETE_CONFIRMATION, localDate } from "@/lib/crm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -125,9 +125,9 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   };
 
   const handleAdvance = (lead: Lead) => {
-    const idx = ETAPAS.indexOf(lead.etapa);
-    if (idx < 0 || idx >= ETAPAS.length - 2) return;
-    move(lead, ETAPAS[idx + 1]);
+    const idx = stages.indexOf(lead.etapa);
+    if (idx < 0 || idx >= stages.length - 2) return;
+    move(lead, stages[idx + 1] as Etapa);
   };
 
   const range = periodRange("todos");
@@ -229,7 +229,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
                   <TableCell><PipelineBadge pipeline={pipelines.find(p=>p.id===l.pipeline_id)} /></TableCell>
                   <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${produtoColor[l.produto]}`}>{l.produto}</span></TableCell>
                   <TableCell>{l.origem}</TableCell>
-                  <TableCell><Select value={l.etapa} onValueChange={v => move(l, v as Etapa)}><SelectTrigger aria-label={`Etapa de ${l.nome}`}><SelectValue /></SelectTrigger><SelectContent>{ETAPAS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select></TableCell>
+                  <TableCell><Select value={l.etapa} onValueChange={v => move(l, v as Etapa)}><SelectTrigger aria-label={`Etapa de ${l.nome}`}><SelectValue /></SelectTrigger><SelectContent>{stages.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select></TableCell>
                   <TableCell><ScoreBadge score={calcScore(l)} /></TableCell>
                   <TableCell>{l.proximoFollowUp ? localDate(l.proximoFollowUp).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell>{formatBRL(l.valorCarta)}</TableCell>
