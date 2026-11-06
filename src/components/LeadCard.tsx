@@ -61,6 +61,20 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
       <div className="text-xs text-muted-foreground">
         {lead.origem} · {formatBRL(lead.valorCarta)}
       </div>
+      {(lead.detalhesCliente?.objetivo || lead.detalhesCliente?.capacidadeMensal != null || lead.detalhesCliente?.temperatura) && (
+        <div className="space-y-1 text-[11px]">
+          {lead.detalhesCliente?.objetivo && <div className="text-foreground line-clamp-2"><span className="text-muted-foreground">Objetivo:</span> {lead.detalhesCliente.objetivo}</div>}
+          <div className="flex flex-wrap gap-1">
+            {lead.detalhesCliente?.capacidadeMensal != null && <span className="rounded bg-muted px-1.5 py-0.5">Capacidade: {formatBRL(lead.detalhesCliente.capacidadeMensal)}/mês</span>}
+            {lead.detalhesCliente?.temperatura && <span className="rounded bg-muted px-1.5 py-0.5">{lead.detalhesCliente.temperatura}</span>}
+          </div>
+        </div>
+      )}
+      {lead.detalhesCliente?.atualizacoes?.trim() && (
+        <div className="rounded-md bg-muted/60 px-2 py-1.5 text-[11px] text-muted-foreground line-clamp-2">
+          <span className="font-medium text-foreground">Atualização:</span> {lead.detalhesCliente.atualizacoes}
+        </div>
+      )}
       <div className="text-[11px] text-muted-foreground">{stageDays(lead)} dias nesta etapa</div>
       {lead.proximoFollowUp && (
         <div className="flex items-center gap-1 text-[11px] text-foreground">
