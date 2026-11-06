@@ -47,6 +47,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   }, [open, initial, defaultPipelineId, pipelines, config.produtosAtivos, config.origens, defaultStage]);
 
   const update = (patch: Partial<Lead>) => setForm((f) => ({ ...f, ...patch }));
+  const updateCommercial = (patch: Partial<NonNullable<Lead["detalhesCliente"]>>) => setForm(f => ({ ...f, detalhesCliente: { ...f.detalhesCliente, ...patch } }));
 
   const submit = () => {
     if (!form.nome?.trim() || !form.telefone?.trim()) { toast.error("Preencha nome e telefone."); return; }
@@ -77,6 +78,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
       rendaEstimada: initial?.rendaEstimada,
       proximoFollowUp: initial?.proximoFollowUp,
       proximaAcaoTipo: initial?.proximaAcaoTipo,
+      detalhesCliente: { ...initial?.detalhesCliente, objetivo: form.detalhesCliente?.objetivo, capacidadeMensal: form.detalhesCliente?.capacidadeMensal, temperatura: form.detalhesCliente?.temperatura, atualizacoes: form.detalhesCliente?.atualizacoes },
     };
     onSave(lead);
     onOpenChange(false);
@@ -124,6 +126,30 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
           <div className="col-span-2">
             <Label>Perfil do cliente</Label>
             <Input value={form.perfil ?? ""} onChange={(e) => update({ perfil: e.target.value })} />
+          </div>
+          <div className="col-span-2">
+            <Label>Objetivo do cliente</Label>
+            <Input placeholder="Ex.: comprar imóvel para renda, trocar de veículo, investir..." value={form.detalhesCliente?.objetivo ?? ""} onChange={(e) => updateCommercial({ objetivo: e.target.value })} />
+          </div>
+          <div>
+            <Label>Capacidade mensal disponível (R$)</Label>
+            <Input type="number" min="0" value={form.detalhesCliente?.capacidadeMensal ?? ""} onChange={(e) => updateCommercial({ capacidadeMensal: e.target.value === "" ? undefined : Number(e.target.value) })} />
+          </div>
+          <div>
+            <Label>Temperatura</Label>
+            <Select value={form.detalhesCliente?.temperatura ?? "Morno"} onValueChange={(v) => updateCommercial({ temperatura: v as "Frio" | "Morno" | "Quente" })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Frio">Frio</SelectItem>
+                <SelectItem value="Morno">Morno</SelectItem>
+                <SelectItem value="Quente">Quente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="col-span-2">
+            <Label>Atualizações da negociação</Label>
+            <Textarea rows={3} placeholder="Registre novidades, conversas, mudanças de cenário, objeções ou próximos alinhamentos..." value={form.detalhesCliente?.atualizacoes ?? ""} onChange={(e) => updateCommercial({ atualizacoes: e.target.value })} />
+            <p className="text-xs text-muted-foreground mt-1">Use este campo para manter o contexto mais recente da negociação.</p>
           </div>
           <div className="col-span-2">
             <Label>Observações iniciais</Label>
