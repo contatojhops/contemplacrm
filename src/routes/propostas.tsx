@@ -160,11 +160,19 @@ function SimuladorTab() {
   const [fundoReserva, setFundoReserva] = useState(initialProductConfig?.fundoReserva ?? config.fundoReserva);
   const [comissao, setComissao] = useState(initialProductConfig?.comissao ?? config.comissao);
   const [seguro, setSeguro] = useState(false);
-  const [valorSeguro, setValorSeguro] = useState(config.valorSeguroDefault);
-  const [produto, setProduto] = useState<Produto>("Veículo");
+  const [valorSeguro, setValorSeguro] = useState(initialProductConfig?.valorSeguro ?? config.valorSeguroDefault);
+  const [produto, setProduto] = useState<Produto>(produtos.includes("Veículo") ? "Veículo" : produtos[0] ?? "Outros");
   const [saveModal, setSaveModal] = useState(false);
   const [clienteSel, setClienteSel] = useState("");
   const [novoCliente, setNovoCliente] = useState("");
+
+  useEffect(() => {
+    const settings = config.simuladorProdutos?.find(item => item.produto === produto);
+    setTaxaAdmin(settings?.taxaAdmin ?? config.taxaAdmin);
+    setFundoReserva(settings?.fundoReserva ?? config.fundoReserva);
+    setComissao(settings?.comissao ?? config.comissao);
+    setValorSeguro(settings?.valorSeguro ?? config.valorSeguroDefault);
+  }, [produto, config.simuladorProdutos, config.taxaAdmin, config.fundoReserva, config.comissao, config.valorSeguroDefault]);
 
   const result = useMemo(() => calcularSimulacao({
     valorCarta, prazo, taxaAdmin, fundoReserva, seguro, valorSeguro, comissao,
