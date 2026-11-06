@@ -32,7 +32,8 @@ function ConfigPage() {
   const [novoTemplate, setNovoTemplate] = useState<Template>({ id: "", nome: "", canal: "WhatsApp", texto: "" });
 
   const save = () => {
-    if (!form.consultorNome.trim() || [form.metaMensal, form.taxaAdmin, form.fundoReserva, form.comissao, ...(form.simuladorProdutos ?? []).flatMap(p => [p.taxaAdmin, p.fundoReserva, p.comissao, p.valorSeguro])].some(v => !Number.isFinite(v) || v < 0)) { toast.error("Confira os campos do consultor e os valores."); return; }
+    if (!form.consultorNome.trim() || (form.etapas ?? []).some(e => !e.nome.trim()) || new Set((form.etapas ?? []).map(e => e.nome.trim().toLowerCase())).size !== (form.etapas ?? []).length || (form.produtosAtivos ?? []).some(p => !p.nome.trim()) || new Set((form.produtosAtivos ?? []).map(p => p.nome.trim().toLowerCase())).size !== (form.produtosAtivos ?? []).length || (form.origens ?? []).some(o => !o.trim()) || new Set((form.origens ?? []).map(o => o.trim().toLowerCase())).size !== (form.origens ?? []).length || [form.metaMensal, form.taxaAdmin, form.fundoReserva, form.comissao, ...(form.simuladorProdutos ?? []).flatMap(p => [p.taxaAdmin, p.fundoReserva, p.comissao, p.valorSeguro])].some(v => !Number.isFinite(v) || v < 0)) { toast.error("Confira os campos do consultor e os valores."); return; }
+    const nextForm = { ...form };
     const oldStages = config.etapas ?? [];
     const nextStages = form.etapas ?? [];
     const stageNames = new Map(oldStages.filter(s => s.id).map(s => [s.id, nextStages.find(n => n.id === s.id)?.nome ?? s.nome]));
@@ -53,10 +54,10 @@ function ConfigPage() {
         setLeads(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
         setClientes(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
         setPropostas(prev => prev.map(p => ({ ...p, produto: productNames.get(p.produto) ?? p.produto })));
-        form.simuladorProdutos = (form.simuladorProdutos ?? []).map(item => ({ ...item, produto: productNames.get(item.produto) ?? item.produto }));
+        nextForm.simuladorProdutos = (form.simuladorProdutos ?? []).map(item => ({ ...item, produto: productNames.get(item.produto) ?? item.produto }));
       }
     }
-    setConfig(form);
+    setConfig(nextForm);
     toast.success("Configurações salvas e aplicadas ao CRM!");
   };
 
