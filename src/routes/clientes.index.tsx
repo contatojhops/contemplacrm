@@ -42,7 +42,7 @@ function ClientesPage() {
   const [fProduto, setFProduto] = useState("all");
   const [fPerfil, setFPerfil] = useState("all");
 
-  // Tratar leads também como clientes virtuais para visualização unificada (sem duplicar)
+  // Somente leads na etapa final "Fechado" entram na carteira de clientes.
   const todos: (Cliente & { lastContactDate: string })[] = useMemo(() => {
     const enriched = clientes.map((c) => ({
       ...c,
@@ -51,7 +51,7 @@ function ClientesPage() {
     }));
     const existingKeys = new Set(enriched.map((c) => `${c.nome.toLowerCase()}|${c.telefone}`));
     const fromLeads: (Cliente & { lastContactDate: string })[] = leads
-      .filter((l) => !existingKeys.has(`${l.nome.toLowerCase()}|${l.telefone}`))
+      .filter((l) => l.etapa === "Fechado" && !existingKeys.has(`${l.nome.toLowerCase()}|${l.telefone}`))
       .map((l) => ({
         ...l.detalhesCliente,
         id: `lead_${l.id}`,
@@ -96,7 +96,7 @@ function ClientesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground">Sua base de clientes</p>
         </div>
-        <Button onClick={() => setModalOpen(true)}><Plus className="h-4 w-4 mr-2" />Novo Cliente</Button>
+        <Button onClick={() => setModalOpen(true)}><Plus className="h-4 w-4 mr-2" />Cadastrar Lead</Button>
       </div>
 
       <LeadModal
@@ -104,7 +104,7 @@ function ClientesPage() {
         onOpenChange={setModalOpen}
         onSave={(lead: Lead) => {
           setLeads((p) => [lead, ...p]);
-          toast.success("Cliente cadastrado com sucesso!");
+          toast.success("Lead cadastrado no pipeline. Ele aparecerá em Clientes quando chegar à etapa Fechado.");
         }}
       />
 
