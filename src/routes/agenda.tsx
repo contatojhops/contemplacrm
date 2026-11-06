@@ -92,7 +92,7 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
   initial: Tarefa | null;
   onSave: (t: Tarefa) => void;
 }) {
-  const [leads, setLeads] = useLeads();
+  const [leads] = useLeads();
   const [leadSearch,setLeadSearch] = useState("");
   const [form, setForm] = useState<Partial<Tarefa>>(initial ?? {
     titulo: "", tipo: "Follow-up", cliente: "", data: new Date().toISOString(), concluida: false, prioridade: "Média", descricao: "", lembrete: false,
@@ -236,7 +236,7 @@ function CalendarView({ tarefas, onDayClick }: { tarefas: Tarefa[]; onDayClick: 
 
 function AgendaPage() {
   const [savedTasks, setTarefas] = useTarefas();
-  const [leads] = useLeads();
+  const [leads, setLeads] = useLeads();
   const tarefas = savedTasks.map(t=>({...t,cliente:leads.find(l=>l.id===t.lead_id)?.nome ?? t.cliente}));
   const [view, setView] = useState<"calendario" | "lista">("lista");
   const [modalOpen, setModalOpen] = useState(false);
