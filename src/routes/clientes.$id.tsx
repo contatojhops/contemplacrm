@@ -13,12 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useClientes, useLeads, usePropostas, useConfig } from "@/lib/store";
+import { useClientes, useLeads, usePropostas, useConfig, useTarefas } from "@/lib/store";
 import { ArrowLeft, MessageCircle, Plus, Upload, Download, Trash2, X, FileText, Image as ImageIcon, File } from "lucide-react";
 import { ScoreBadge } from "@/components/LeadCard";
 import { calcScore, formatBRL } from "@/lib/scoring";
 import { toast } from "sonner";
-import type { Cliente, ClienteFase, ClientePerfil, Documento, Interacao, InteracaoResultado, InteracaoTipo, ObjecaoRegistrada, Origem, Produto } from "@/lib/types";
+import type { Cliente, ClienteFase, ClientePerfil, Documento, Interacao, InteracaoResultado, InteracaoTipo, ObjecaoRegistrada, Origem, Produto, Tarefa, TarefaTipo } from "@/lib/types";
 
 export const Route = createFileRoute("/clientes/$id")({ head: () => pageHead("Perfil do cliente", "Dados, interações e próximas ações do cliente."), component: ClienteProfilePage });
 
@@ -55,6 +55,7 @@ function ClienteProfilePage() {
   const [clientes, setClientes] = useClientes();
   const [leads, setLeads] = useLeads();
   const [propostas] = usePropostas();
+  const [tarefas, setTarefas] = useTarefas();
   const [config] = useConfig();
 
   // Resolver cliente: pode vir de leads (id começa com lead_)
@@ -104,6 +105,39 @@ function ClienteProfilePage() {
   const score = baseLead ? calcScore(baseLead) : 70;
   const fase = cliente.fase ?? (cliente.contemplado ? "Contemplado" : "Cliente Ativo");
   const propostasCliente = propostas.filter((p) => p.leadNome === cliente.nome || p.clienteId === cliente.id);
+
+  const saveNextAction = (action = cliente.proximaAcao) => {
+    if (!action || !action.data || !action.tipo?.trim() || !action.descricao?.trim()) {
+      toast.error("Preencha data, tipo e descrição da próxima ação.");
+      return;
+    }
+    const actionDate = localDate(action.data);
+    if (!Number.isFinite(actionDate.getTime())) { toast.error("Informe uma data válida."); return; }
+    const [hours, minutes] = (action.hora || "09:00").split(":").map(Number);
+    actionDate.setHours(hours || 0, minutes || 0, 0, 0);
+    const normalized = { ...action, id: action.id ?? crypto.randomUUID() };
+    update({ proximaAcao: normalized });
+    if (fromLead) {
+      const existing = tarefas.find(t => t.proximaAcaoId === normalized.id);
+      const validTypes: TarefaTipo[] = ["Ligação", "WhatsApp", "Reunião", "E-mail", "Visita", "Follow-up", "Enviar Proposta", "Recontato", "Outro"];
+      const task: Tarefa = {
+        id: existing?.id ?? crypto.randomUUID(),
+        titulo: normalized.tipo + ": " + normalized.descricao,
+        tipo: validTypes.includes(normalized.tipo as TarefaTipo) ? normalized.tipo as TarefaTipo : "Follow-up",
+        cliente: cliente.nome,
+        lead_id: realId,
+        leadId: realId,
+        data: actionDate.toISOString(),
+        concluida: false,
+        prioridade: existing?.prioridade ?? "Média",
+        descricao: normalized.descricao,
+        lembrete: existing?.lembrete ?? true,
+        proximaAcaoId: normalized.id,
+      };
+      setTarefas(prev => existing ? prev.map(t => t.id === existing.id ? task : t) : [task, ...prev]);
+    }
+    toast.success(fromLead ? "Próxima ação salva e adicionada à Agenda." : "Próxima ação salva.");
+  };
 
   const addInteracao = (i: Interacao) => {
     const list = [...(cliente.interacoes ?? []), i];
@@ -204,6 +238,9 @@ function ClienteProfilePage() {
                 <div><Label>Data de nascimento</Label><Input type="date" value={cliente.dataNascimento ?? ""} onChange={(e) => update({ dataNascimento: e.target.value })} /></div>
                 <div><Label>Profissão</Label><Input value={cliente.profissao ?? ""} onChange={(e) => update({ profissao: e.target.value })} /></div>
                 <div><Label>Renda estimada (R$)</Label><Input type="number" value={cliente.rendaEstimada ?? 0} onChange={(e) => update({ rendaEstimada: Number(e.target.value) })} /></div>
+                <div><Label>Capacidade mensal disponível (R$)</Label><Input type="number" value={cliente.capacidadeMensal ?? 0} onChange={(e) => update({ capacidadeMensal: Number(e.target.value) })} /></div>
+                <div className="md:col-span-2"><Label>Objetivo do cliente</Label><Input placeholder="Ex.: comprar imóvel para renda, trocar de veículo, investir..." value={cliente.objetivo ?? ""} onChange={(e) => update({ objetivo: e.target.value })} /></div>
+                <div><Label>Temperatura do lead</Label><Select value={cliente.temperatura ?? "Morno"} onValueChange={(v) => update({ temperatura: v as Cliente["temperatura"] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Frio">Frio</SelectItem><SelectItem value="Morno">Morno</SelectItem><SelectItem value="Quente">Quente</SelectItem></SelectContent></Select></div>
                 <div><Label>Telefone (WhatsApp)</Label><Input value={cliente.telefone} onChange={(e) => update({ telefone: e.target.value })} /></div>
                 <div><Label>E-mail</Label><Input value={cliente.email} onChange={(e) => update({ email: e.target.value })} /></div>
                 <div><Label>Cidade</Label><Input value={cliente.cidade ?? ""} onChange={(e) => update({ cidade: e.target.value })} /></div>
@@ -372,21 +409,22 @@ function ClienteProfilePage() {
                   <div><Label>Tipo</Label><Input value={cliente.proximaAcao?.tipo ?? ""} onChange={(e) => update({ proximaAcao: { ...(cliente.proximaAcao ?? { data: new Date().toISOString(), descricao: "" }), tipo: e.target.value } })} /></div>
                   <div className="md:col-span-2"><Label>Descrição</Label><Textarea value={cliente.proximaAcao?.descricao ?? ""} onChange={(e) => update({ proximaAcao: { ...(cliente.proximaAcao ?? { data: new Date().toISOString(), tipo: "Follow-up" }), descricao: e.target.value } })} /></div>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => {
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => saveNextAction()}>{fromLead ? "Salvar e adicionar à Agenda" : "Salvar próxima ação"}</Button>
+                  <Button size="sm" variant="outline" onClick={() => {
                     if (cliente.proximaAcao) {
                       update({
                         acoesConcluidas: [...(cliente.acoesConcluidas ?? []), { data: new Date().toISOString(), tipo: cliente.proximaAcao.tipo, descricao: cliente.proximaAcao.descricao }],
                         proximaAcao: undefined,
                       });
-                      toast.success("Concluída");
+                      if (fromLead && cliente.proximaAcao.id) setTarefas(prev => prev.map(t => t.proximaAcaoId === cliente.proximaAcao?.id ? { ...t, concluida: true } : t));
+                      toast.success("Concluída e registrada no histórico.");
                     }
                   }}>Concluída</Button>
                   <Button size="sm" variant="outline" onClick={() => {
                     if (cliente.proximaAcao) {
                       const d = localDate(cliente.proximaAcao.data); d.setDate(d.getDate() + 1);
-                      update({ proximaAcao: { ...cliente.proximaAcao, data: d.toISOString() } });
-                      toast.success("Reagendada");
+                      saveNextAction({ ...cliente.proximaAcao, data: d.toISOString() });
                     }
                   }}>Reagendar</Button>
                 </div>
