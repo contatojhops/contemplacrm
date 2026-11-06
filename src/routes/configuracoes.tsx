@@ -44,6 +44,15 @@ function ConfigPage() {
         return renamed && renamed !== lead.etapa ? { ...lead, etapa: renamed } : lead;
       }));
     }
+    const oldOrigins = config.origens ?? [];
+    const nextOrigins = form.origens ?? [];
+    if (oldOrigins.length === nextOrigins.length) {
+      const originNames = new Map(oldOrigins.map((origin, i) => [origin, nextOrigins[i]]));
+      if ([...originNames].some(([a,b]) => a !== b)) {
+        setLeads(prev => prev.map(l => ({ ...l, origem: originNames.get(l.origem) ?? l.origem })));
+        setClientes(prev => prev.map(c => ({ ...c, origem: c.origem ? originNames.get(c.origem) ?? c.origem : c.origem })));
+      }
+    }
     const oldProducts = config.produtosAtivos ?? [];
     const nextProducts = form.produtosAtivos ?? [];
     // Positional rename is safe only when the list length is unchanged; additions/removals
