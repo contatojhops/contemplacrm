@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -96,7 +96,10 @@ const EMPTY: never[] = [];
 export function useCloudDocument<T extends object>(defaults: T) {
   useSyncExternalStore(subscribe, () => version, () => 0);
   const stored = state.get("configuracoes")?.data as Partial<T> | null | undefined;
-  const value = stored ? ({ ...defaults, ...stored } as T) : defaults;
+  // Keep the document reference stable between unrelated store notifications.
+  // ConfigPage syncs its local form from this value; recreating it on every render
+  // causes an effect -> setState -> render loop (Maximum update depth exceeded).
+  const value = useMemo(() => (stored ? ({ ...defaults, ...stored } as T) : defaults), [defaults, stored]);
   const save = useCallback((update: T | ((previous: T) => T)) => {
     if (!userId) return;
     const prevRaw = state.get("configuracoes")?.data as T | null;
