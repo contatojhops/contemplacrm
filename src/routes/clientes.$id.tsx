@@ -414,7 +414,7 @@ function ClienteProfilePage() {
                   <Button size="sm" variant="outline" onClick={() => {
                     if (cliente.proximaAcao) {
                       update({
-                        acoesConcluidas: [...(cliente.acoesConcluidas ?? []), { data: new Date().toISOString(), tipo: cliente.proximaAcao.tipo, descricao: cliente.proximaAcao.descricao }],
+                        acoesConcluidas: [...(cliente.acoesConcluidas ?? []), { id: cliente.proximaAcao.id, data: new Date().toISOString(), tipo: cliente.proximaAcao.tipo, descricao: cliente.proximaAcao.descricao }],
                         proximaAcao: undefined,
                       });
                       if (fromLead && cliente.proximaAcao.id) setTarefas(prev => prev.map(t => t.proximaAcaoId === cliente.proximaAcao?.id ? { ...t, concluida: true } : t));
