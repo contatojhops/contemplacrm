@@ -1,5 +1,5 @@
 import { PipelineBadge } from "./PipelineBadge";
-import { ETAPAS, metrics, periodRange, inRange, leadCsv, type Period } from "@/lib/pipelines";
+import { metrics, periodRange, inRange, leadCsv, type Period } from "@/lib/pipelines";
 import { Download } from "lucide-react";
 import { changeStage, DELETE_CONFIRMATION, localDate } from "@/lib/crm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -15,8 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useLeads, usePipelines, useTarefas } from "@/lib/store";
-import type { Lead, Etapa, Produto, Origem, Pipeline } from "@/lib/types";
+import { useLeads, usePipelines, useTarefas, useConfig } from "@/lib/store";
+import type { Lead, Etapa, Pipeline } from "@/lib/types";
 import { LeadCard, ScoreBadge, produtoColor } from "@/components/LeadCard";
 import { LeadModal } from "@/components/LeadModal";
 import { PipelineSelector } from "@/components/PipelineSelector";
@@ -57,6 +57,8 @@ function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPi
 
 export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const [pipelines] = usePipelines();
+  const [config] = useConfig();
+  const stages = (config.etapas ?? []).map(item => item.nome);
   const [,setTasks] = useTarefas();
   const pipeline = pipelines.find(p => p.id === pipelineId);
   const [period,setPeriod] = useState<Period>("todos");
@@ -99,12 +101,15 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     return true;
   }), [leads, search, filterProduto, filterOrigem, filterEtapa, pipelineId, period]);
 
+  const productOptions = [...new Set([...(config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome), ...leads.map(l => l.produto)])];
+  const originOptions = [...new Set([...(config.origens ?? []), ...leads.map(l => l.origem)])];
+
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     if (!over) return;
     const leadId = String(active.id);
     const overId = String(over.id);
-    const target = ETAPAS.includes(overId as Etapa) ? (overId as Etapa) : leads.find((l) => l.id === overId)?.etapa;
+    const target = stages.includes(overId) ? (overId as Etapa) : leads.find((l) => l.id === overId)?.etapa;
     if (!target) return;
     const lead = leads.find(l => l.id === leadId);
     if (lead) move(lead, target);
@@ -120,9 +125,9 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   };
 
   const handleAdvance = (lead: Lead) => {
-    const idx = ETAPAS.indexOf(lead.etapa);
-    if (idx < 0 || idx >= ETAPAS.length - 2) return;
-    move(lead, ETAPAS[idx + 1]);
+    const idx = stages.indexOf(lead.etapa);
+    if (idx < 0 || idx >= stages.length - 2) return;
+    move(lead, stages[idx + 1] as Etapa);
   };
 
   const range = periodRange("todos");
@@ -155,21 +160,21 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Produto" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Produtos</SelectItem>
-              {(["Imóvel","Veículo","Serviço","Moto","Investimento","Outros"] as Produto[]).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              {productOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterOrigem} onValueChange={setFilterOrigem}>
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Origem" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas Origens</SelectItem>
-              {(["Meta Ads","Instagram","WhatsApp","Indicação","Orgânico","Outros"] as Origem[]).map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              {originOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filterEtapa} onValueChange={setFilterEtapa}>
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="Etapa" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas Etapas</SelectItem>
-              {ETAPAS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              {stages.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
           <div className="flex border border-border rounded-md overflow-hidden">
@@ -187,7 +192,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
       {view === "kanban" ? (
         <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
           <div className="flex gap-3 overflow-x-auto pb-4">
-            {ETAPAS.map((e) => (
+            {stages.map((e) => (
               <Column
                 key={e}
                 etapa={e}
@@ -222,9 +227,9 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
                 <TableRow key={l.id}>
                   <TableCell className="font-medium">{l.nome}</TableCell>
                   <TableCell><PipelineBadge pipeline={pipelines.find(p=>p.id===l.pipeline_id)} /></TableCell>
-                  <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${produtoColor[l.produto]}`}>{l.produto}</span></TableCell>
+                  <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${produtoColor[l.produto] ?? "bg-muted text-muted-foreground border-border"}`}>{l.produto}</span></TableCell>
                   <TableCell>{l.origem}</TableCell>
-                  <TableCell><Select value={l.etapa} onValueChange={v => move(l, v as Etapa)}><SelectTrigger aria-label={`Etapa de ${l.nome}`}><SelectValue /></SelectTrigger><SelectContent>{ETAPAS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select></TableCell>
+                  <TableCell><Select value={l.etapa} onValueChange={v => move(l, v as Etapa)}><SelectTrigger aria-label={`Etapa de ${l.nome}`}><SelectValue /></SelectTrigger><SelectContent>{stages.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select></TableCell>
                   <TableCell><ScoreBadge score={calcScore(l)} /></TableCell>
                   <TableCell>{l.proximoFollowUp ? localDate(l.proximoFollowUp).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell>{formatBRL(l.valorCarta)}</TableCell>

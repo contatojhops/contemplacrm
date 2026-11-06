@@ -9,18 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Plus, Eye, Pencil, Trash2 } from "lucide-react";
-import { useClientes, useLeads } from "@/lib/store";
+import { useClientes, useLeads, useConfig } from "@/lib/store";
 import { calcScore } from "@/lib/scoring";
 import { ScoreBadge } from "@/components/LeadCard";
 import { LeadModal } from "@/components/LeadModal";
 import { toast } from "sonner";
 import type { Lead } from "@/lib/types";
-import type { Cliente, ClienteFase, ClientePerfil, Produto } from "@/lib/types";
+import type { Cliente, ClienteFase, ClientePerfil } from "@/lib/types";
 
 export const Route = createFileRoute("/clientes/")({ head: () => pageHead("Clientes", "Base de clientes e contatos do Consórcio CRM."), component: ClientesPage });
 
 const FASES: (ClienteFase | "Todos")[] = ["Todos", "Lead", "Recuperação", "Cliente Ativo", "Contemplado"];
-const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
 const PERFIS: ClientePerfil[] = ["Pessoa Física", "Profissional Liberal", "Empresário", "Investidor"];
 
 function faseColor(f?: ClienteFase) {
@@ -35,6 +34,8 @@ function faseColor(f?: ClienteFase) {
 function ClientesPage() {
   const [clientes, setClientes] = useClientes();
   const [leads, setLeads] = useLeads();
+  const [config] = useConfig();
+  const produtos = [...new Set([...(config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome), ...clientes.map(c => c.produto)])];
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [fase, setFase] = useState<typeof FASES[number]>("Todos");
@@ -122,7 +123,7 @@ function ClientesPage() {
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="Produto" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Produtos</SelectItem>
-              {PRODUTOS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              {produtos.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={fPerfil} onValueChange={setFPerfil}>

@@ -22,8 +22,6 @@ import type { Cliente, ClienteFase, ClientePerfil, Documento, Interacao, Interac
 
 export const Route = createFileRoute("/clientes/$id")({ head: () => pageHead("Perfil do cliente", "Dados, interações e próximas ações do cliente."), component: ClienteProfilePage });
 
-const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
-const ORIGENS: Origem[] = ["Meta Ads", "Instagram", "WhatsApp", "Indicação", "Orgânico", "Outros"];
 const PERFIS: ClientePerfil[] = ["Pessoa Física", "Profissional Liberal", "Empresário", "Investidor"];
 const FASES: ClienteFase[] = ["Lead", "Recuperação", "Cliente Ativo", "Contemplado"];
 const TAGS_PREDEF = ["aguardando documentos", "recontato em 30 dias", "tem urgência", "muito interessado", "sem urgência", "tem dívidas", "quer pensar mais"];
@@ -81,6 +79,8 @@ function ClienteProfilePage() {
   const [interacaoModal, setInteracaoModal] = useState(false);
   const [objecaoModal, setObjecaoModal] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const produtos = [...new Set([...(config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome), ...(cliente?.produto ? [cliente.produto] : [])])];
+  const origens = [...new Set([...(config.origens ?? []), ...(cliente?.origem ? [cliente.origem] : [])])];
 
   if (!cliente) {
     return (
@@ -212,7 +212,7 @@ function ClienteProfilePage() {
                   <Label>Como conheceu</Label>
                   <Select value={cliente.origem} onValueChange={(v) => update({ origem: v as Origem })}>
                     <SelectTrigger><SelectValue placeholder="Origem" /></SelectTrigger>
-                    <SelectContent>{ORIGENS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                    <SelectContent>{origens.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
@@ -256,13 +256,14 @@ function ClienteProfilePage() {
                   <Label>Produto</Label>
                   <Select value={cliente.produto} onValueChange={(v) => update({ produto: v as Produto })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{PRODUTOS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    <SelectContent>{produtos.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div><Label>Valor da carta (R$)</Label><Input type="number" value={cliente.valorCarta} onChange={(e) => update({ valorCarta: Number(e.target.value) })} /></div>
                 <div><Label>Prazo preferido (meses)</Label><Input type="number" value={cliente.prazoMeses ?? 60} onChange={(e) => {
                   const prazo = Number(e.target.value);
-                  const taxas = (cliente.valorCarta * (config.taxaAdmin + config.fundoReserva)) / 100;
+                  const productConfig = config.simuladorProdutos?.find(item => item.produto === cliente.produto);
+                  const taxas = (cliente.valorCarta * ((productConfig?.taxaAdmin ?? config.taxaAdmin) + (productConfig?.fundoReserva ?? config.fundoReserva))) / 100;
                   const parcela = prazo > 0 ? (cliente.valorCarta + taxas) / prazo : 0;
                   update({ prazoMeses: prazo, parcelaEstimada: parcela });
                 }} /></div>

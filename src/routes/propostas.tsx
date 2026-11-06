@@ -1,7 +1,7 @@
 import { pageHead } from "@/lib/metadata";
 import { FEATURES } from "@/lib/features";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,6 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/propostas")({ head: () => pageHead("Propostas e Simulações", "Propostas e simulações de consórcio."), beforeLoad: () => { if (!FEATURES.propostas) throw redirect({ to: "/" }); }, component: PropostasPage });
 
-const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
 const STATUS: PropostaStatus[] = ["Rascunho", "Enviada", "Em Análise", "Aprovada", "Recusada"];
 
 function statusColor(s: PropostaStatus) {
@@ -57,6 +56,7 @@ function PropostasPage() {
 function PropostasTab() {
   const [propostas] = usePropostas();
   const [config] = useConfig();
+  const produtos = (config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome);
   const [fStatus, setFStatus] = useState("all");
   const [fProduto, setFProduto] = useState("all");
   const [search, setSearch] = useState("");
@@ -85,7 +85,7 @@ function PropostasTab() {
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="Produto" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Produtos</SelectItem>
-              {PRODUTOS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              {produtos.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -108,8 +108,9 @@ function PropostasTab() {
           </TableHeader>
           <TableBody>
             {filtered.map((p) => {
-              const taxa = p.taxaAdmin ?? config.taxaAdmin;
-              const comissao = p.comissaoEstimada ?? (p.valorCarta * config.comissao) / 100;
+              const productConfig = config.simuladorProdutos?.find(item => item.produto === p.produto);
+              const taxa = p.taxaAdmin ?? productConfig?.taxaAdmin ?? config.taxaAdmin;
+              const comissao = p.comissaoEstimada ?? (p.valorCarta * (productConfig?.comissao ?? config.comissao)) / 100;
               const open = expanded === p.id;
               return (
                 <>
@@ -128,7 +129,7 @@ function PropostasTab() {
                     <TableRow>
                       <TableCell colSpan={9} className="bg-accent/30">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 text-sm">
-                          <div><div className="text-xs text-muted-foreground">Fundo Reserva</div>{p.fundoReserva ?? config.fundoReserva}%</div>
+                          <div><div className="text-xs text-muted-foreground">Fundo Reserva</div>{p.fundoReserva ?? productConfig?.fundoReserva ?? config.fundoReserva}%</div>
                           <div><div className="text-xs text-muted-foreground">Seguro</div>{p.seguro ? "Sim" : "Não"}</div>
                           <div><div className="text-xs text-muted-foreground">Valor Seguro</div>{p.valorSeguro ? formatBRL(p.valorSeguro) : "—"}</div>
                           <div><div className="text-xs text-muted-foreground">Comissão Estimada</div><span className="text-success font-bold">{formatBRL(comissao)}</span></div>
@@ -149,22 +150,38 @@ function PropostasTab() {
 
 function SimuladorTab() {
   const [config] = useConfig();
+  const produtos = (config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome);
   const [, setPropostas] = usePropostas();
   const [clientes] = useClientes();
   const [valorCarta, setValorCarta] = useState(100000);
   const [prazo, setPrazo] = useState(80);
-  const [taxaAdmin, setTaxaAdmin] = useState(config.taxaAdmin);
-  const [fundoReserva, setFundoReserva] = useState(config.fundoReserva);
+  const initialProductConfig = config.simuladorProdutos?.find(p => p.produto === "Veículo");
+  const [taxaAdmin, setTaxaAdmin] = useState(initialProductConfig?.taxaAdmin ?? config.taxaAdmin);
+  const [fundoReserva, setFundoReserva] = useState(initialProductConfig?.fundoReserva ?? config.fundoReserva);
+  const [comissao, setComissao] = useState(initialProductConfig?.comissao ?? config.comissao);
   const [seguro, setSeguro] = useState(false);
-  const [valorSeguro, setValorSeguro] = useState(config.valorSeguroDefault);
-  const [produto, setProduto] = useState<Produto>("Veículo");
+  const [valorSeguro, setValorSeguro] = useState(initialProductConfig?.valorSeguro ?? config.valorSeguroDefault);
+  const [produto, setProduto] = useState<Produto>(produtos.includes("Veículo") ? "Veículo" : produtos[0] ?? "Outros");
   const [saveModal, setSaveModal] = useState(false);
   const [clienteSel, setClienteSel] = useState("");
   const [novoCliente, setNovoCliente] = useState("");
 
+  useEffect(() => {
+    const activeProducts = (config.produtosAtivos ?? []).filter(item => item.ativo).map(item => item.nome);
+    if (activeProducts.length && !activeProducts.includes(produto)) {
+      setProduto(activeProducts.includes("Veículo") ? "Veículo" : activeProducts[0]);
+      return;
+    }
+    const settings = config.simuladorProdutos?.find(item => item.produto === produto);
+    setTaxaAdmin(settings?.taxaAdmin ?? config.taxaAdmin);
+    setFundoReserva(settings?.fundoReserva ?? config.fundoReserva);
+    setComissao(settings?.comissao ?? config.comissao);
+    setValorSeguro(settings?.valorSeguro ?? config.valorSeguroDefault);
+  }, [produto, config.produtosAtivos, config.simuladorProdutos, config.taxaAdmin, config.fundoReserva, config.comissao, config.valorSeguroDefault]);
+
   const result = useMemo(() => calcularSimulacao({
-    valorCarta, prazo, taxaAdmin, fundoReserva, seguro, valorSeguro, comissao: config.comissao,
-  }), [valorCarta, prazo, taxaAdmin, fundoReserva, seguro, valorSeguro, config.comissao]);
+    valorCarta, prazo, taxaAdmin, fundoReserva, seguro, valorSeguro, comissao,
+  }), [valorCarta, prazo, taxaAdmin, fundoReserva, seguro, valorSeguro, comissao]);
 
   const salvarProposta = () => {
     const nome = clienteSel || novoCliente;
@@ -195,7 +212,7 @@ function SimuladorTab() {
             <Label>Produto</Label>
             <Select value={produto} onValueChange={(v) => setProduto(v as Produto)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{PRODUTOS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              <SelectContent>{produtos.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>

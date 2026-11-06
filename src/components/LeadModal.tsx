@@ -1,4 +1,4 @@
-import { usePipelines } from "@/lib/store";
+import { usePipelines, useConfig } from "@/lib/store";
 import { GENERAL_ID } from "@/lib/pipelines";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
@@ -10,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Lead, Produto, Origem } from "@/lib/types";
 
-const PRODUTOS: Produto[] = ["Imóvel", "Veículo", "Serviço", "Moto", "Investimento", "Outros"];
-const ORIGENS: Origem[] = ["Meta Ads", "Instagram", "WhatsApp", "Indicação", "Orgânico", "Outros"];
 
 interface Props {
   open: boolean;
@@ -23,14 +21,24 @@ interface Props {
 
 export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipelineId }: Props) {
   const [pipelines] = usePipelines();
+  const [config] = useConfig();
+  const produtos = (config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome);
+  const origens = config.origens ?? [];
   const [form, setForm] = useState<Partial<Lead>>(initial ?? {
     nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0,
     origem: "WhatsApp", perfil: "", observacoes: "",
   });
 
   useEffect(() => {
-    if (open) setForm(initial ?? { pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID, nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0, origem: "WhatsApp", perfil: "", observacoes: "" });
-  }, [open, initial, defaultPipelineId]);
+    if (open) setForm(initial ?? {
+      pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
+      nome: "", telefone: "", email: "",
+      produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel",
+      valorCarta: 0,
+      origem: config.origens?.[0] ?? "WhatsApp",
+      perfil: "", observacoes: "",
+    });
+  }, [open, initial, defaultPipelineId, pipelines, config.produtosAtivos, config.origens]);
 
   const update = (patch: Partial<Lead>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -90,7 +98,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
             <Label>Produto</Label>
             <Select value={form.produto} onValueChange={(v) => update({ produto: v as Produto })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{PRODUTOS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              <SelectContent>{[...new Set([...produtos, ...(form.produto ? [form.produto] : [])])].map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
@@ -101,7 +109,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
             <Label>Origem</Label>
             <Select value={form.origem} onValueChange={(v) => update({ origem: v as Origem })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{ORIGENS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              <SelectContent>{[...new Set([...origens, ...(form.origem ? [form.origem] : [])])].map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="col-span-2"><Label>Pipeline</Label><Select value={form.pipeline_id} onValueChange={v=>update({pipeline_id:v})}><SelectTrigger aria-label="Pipeline do lead"><SelectValue placeholder="Selecione a pipeline" /></SelectTrigger><SelectContent>{pipelines.filter(p=>!p.arquivada || p.id===initial?.pipeline_id).map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select></div>
