@@ -9,7 +9,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '@/components/ui/table';
 import { PipelineBadge, pipelineFill } from '@/components/PipelineBadge';
 import { useLeads, usePipelines, useTarefas, useConfig } from '@/lib/store';
-import { ETAPAS, activeLead, periodRange, inRange, metrics, type Period } from '@/lib/pipelines';
+import { activeLead, periodRange, inRange, metrics, type Period } from '@/lib/pipelines';
 import { localDate, whatsappUrl, stageDays } from '@/lib/crm';
 import { formatBRL } from '@/lib/scoring';
 import { pageHead } from '@/lib/metadata';
@@ -29,7 +29,8 @@ function Dashboard(){
  const current=metrics(base,range.start,range.end);const previous=metrics(base,range.previousStart,range.previousEnd);
  const summaryRows=pipelines.filter(p=>pipelineId==='all'||p.id===pipelineId).map(p=>({...p,...metrics(base.filter(l=>l.pipeline_id===p.id),range.start,range.end)}));
  const kpis=[{label:'Leads captados',key:'leads' as const,icon:Users,color:'text-primary',money:false},{label:'Leads ativos',key:'ativos' as const,icon:Target,color:'text-primary',money:false},{label:'Em Proposta',key:'emProposta' as const,icon:FileText,color:'text-warning',money:false},{label:'Vendas fechadas',key:'fechados' as const,icon:CheckCircle2,color:'text-success',money:false},{label:'Valor em aberto',key:'aberto' as const,icon:DollarSign,color:'text-primary',money:true}];
- const funnel=ETAPAS.map(etapa=>({etapa,leads:base.filter(l=>l.etapa===etapa).length}));
+ const stages=(config.etapas??[]).map(item=>item.nome);
+ const funnel=stages.map(etapa=>({etapa,leads:base.filter(l=>l.etapa===etapa).length}));
  const origins=[...new Set(cohort.map(l=>l.origem))].map(name=>({name,value:cohort.filter(l=>l.origem===name).length}));
  const products=[...new Set(cohort.map(l=>l.produto))].map(name=>{const rows=cohort.filter(l=>l.produto===name);return {name,leads:rows.length,taxa:rows.length?rows.filter(l=>l.etapa==='Fechado').length/rows.length*100:0};});
  const evolution=Array.from({length:6},(_,i)=>{const start=new Date(now.getFullYear(),now.getMonth()-5+i,1);const end=new Date(now.getFullYear(),now.getMonth()-4+i,1);end.setMilliseconds(-1);return {mes:start.toLocaleDateString('pt-BR',{month:'short'}),leads:base.filter(l=>inRange(l.criadoEm,start,end)&&true).length,vendas:base.filter(l=>l.etapa==='Fechado'&&inRange(l.closed_at,start,end)).length};});
