@@ -70,6 +70,7 @@ export interface ProximaAcao {
 }
 
 export interface AcaoConcluida {
+  id?: string;
   data: string;
   tipo: string;
   descricao: string;
