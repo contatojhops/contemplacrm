@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useConfig, useLeads } from "@/lib/store";
+import { useConfig, useLeads, useClientes, usePropostas } from "@/lib/store";
 import { toast } from "sonner";
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown } from "lucide-react";
 import { DataSection } from "@/components/DataSection";
@@ -21,7 +21,9 @@ export const Route = createFileRoute("/configuracoes")({ head: () => pageHead("C
 function ConfigPage() {
   const [config, setConfig] = useConfig();
   const [form, setForm] = useState(config);
-  const [leads] = useLeads();
+  const [leads, setLeads] = useLeads();
+  const [clientes, setClientes] = useClientes();
+  const [propostas, setPropostas] = usePropostas();
   useEffect(() => setForm(config), [config]);
   const [novaEtapa, setNovaEtapa] = useState("");
   const [novoProduto, setNovoProduto] = useState("");
@@ -29,7 +31,29 @@ function ConfigPage() {
   const [novaTag, setNovaTag] = useState({ nome: "", cor: "#3b82f6" });
   const [novoTemplate, setNovoTemplate] = useState<Template>({ id: "", nome: "", canal: "WhatsApp", texto: "" });
 
-  const save = () => { if (!form.consultorNome.trim() || [form.metaMensal, form.taxaAdmin, form.fundoReserva, form.comissao].some(v => !Number.isFinite(v) || v < 0)) { toast.error("Confira os campos do consultor e os valores."); return; } setConfig(form); toast.success("Configurações salvas!"); };
+  const save = () => {
+    if (!form.consultorNome.trim() || [form.metaMensal, form.taxaAdmin, form.fundoReserva, form.comissao].some(v => !Number.isFinite(v) || v < 0)) { toast.error("Confira os campos do consultor e os valores."); return; }
+    const oldStages = config.etapas ?? [];
+    const nextStages = form.etapas ?? [];
+    const stageNames = new Map(oldStages.filter(s => s.id).map(s => [s.id, nextStages.find(n => n.id === s.id)?.nome ?? s.nome]));
+    if (oldStages.some(s => stageNames.get(s.id) !== s.nome)) {
+      setLeads(prev => prev.map(lead => {
+        const stage = oldStages.find(s => s.nome === lead.etapa);
+        const renamed = stage ? stageNames.get(stage.id) : undefined;
+        return renamed && renamed !== lead.etapa ? { ...lead, etapa: renamed } : lead;
+      }));
+    }
+    const oldProducts = config.produtosAtivos ?? [];
+    const nextProducts = form.produtosAtivos ?? [];
+    const productNames = new Map(oldProducts.map((p, i) => [p.nome, nextProducts[i]?.nome ?? p.nome]));
+    if ([...productNames].some(([a,b]) => a !== b)) {
+      setLeads(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
+      setClientes(prev => prev.map(l => ({ ...l, produto: productNames.get(l.produto) ?? l.produto })));
+      setPropostas(prev => prev.map(p => ({ ...p, produto: productNames.get(p.produto) ?? p.produto })));
+    }
+    setConfig(form);
+    toast.success("Configurações salvas e aplicadas ao CRM!");
+  };
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
@@ -83,11 +107,22 @@ function ConfigPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Configurações do Simulador</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div><Label>Taxa Admin (%)</Label><Input type="number" step="0.1" value={form.taxaAdmin} onChange={(e) => setForm({ ...form, taxaAdmin: Number(e.target.value) })} /></div>
-          <div><Label>Fundo Reserva (%)</Label><Input type="number" step="0.1" value={form.fundoReserva} onChange={(e) => setForm({ ...form, fundoReserva: Number(e.target.value) })} /></div>
-          <div><Label>Comissão (%)</Label><Input type="number" step="0.1" value={form.comissao} onChange={(e) => setForm({ ...form, comissao: Number(e.target.value) })} /></div>
+        <CardHeader><CardTitle>Configurações do Simulador por Produto</CardTitle><p className="text-sm text-muted-foreground">Defina taxas e comissão uma única vez para cada produto. O simulador aplicará os valores automaticamente ao selecionar o produto.</p></CardHeader>
+        <CardContent className="space-y-3">
+          {(form.simuladorProdutos ?? []).map((item, i) => (
+            <div key={item.produto} className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2"><span className="font-medium">{item.produto}</span><Button type="button" size="icon" variant="ghost" aria-label={`Excluir configuração de ${item.produto}`} onClick={() => setForm({ ...form, simuladorProdutos: (form.simuladorProdutos ?? []).filter((_, index) => index !== i) })}><Trash2 className="h-4 w-4" /></Button></div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div><Label>Taxa Adm. (%)</Label><Input type="number" min="0" step="0.1" value={item.taxaAdmin} onChange={e => setForm({...form,simuladorProdutos:(form.simuladorProdutos??[]).map((x,index)=>index===i?{...x,taxaAdmin:Number(e.target.value)}:x)})}/></div>
+                <div><Label>Fundo Reserva (%)</Label><Input type="number" min="0" step="0.1" value={item.fundoReserva} onChange={e => setForm({...form,simuladorProdutos:(form.simuladorProdutos??[]).map((x,index)=>index===i?{...x,fundoReserva:Number(e.target.value)}:x)})}/></div>
+                <div><Label>Comissão (%)</Label><Input type="number" min="0" step="0.1" value={item.comissao} onChange={e => setForm({...form,simuladorProdutos:(form.simuladorProdutos??[]).map((x,index)=>index===i?{...x,comissao:Number(e.target.value)}:x)})}/></div>
+                <div><Label>Seguro (R$/mês)</Label><Input type="number" min="0" step="0.01" value={item.valorSeguro} onChange={e => setForm({...form,simuladorProdutos:(form.simuladorProdutos??[]).map((x,index)=>index===i?{...x,valorSeguro:Number(e.target.value)}:x)})}/></div>
+              </div>
+            </div>
+          ))}
+          {(form.produtosAtivos ?? []).filter(p => p.ativo && !(form.simuladorProdutos ?? []).some(x => x.produto === p.nome)).length > 0 && (
+            <div className="flex flex-wrap gap-2 items-end"><div className="flex-1"><Label>Adicionar configuração de produto</Label><Select value="" onValueChange={nome => { const base={taxaAdmin:form.taxaAdmin,fundoReserva:form.fundoReserva,comissao:form.comissao,valorSeguro:form.valorSeguroDefault}; setForm({...form,simuladorProdutos:[...(form.simuladorProdutos??[]),{produto:nome,...base}]}); }}><SelectTrigger><SelectValue placeholder="Selecione um produto sem configuração"/></SelectTrigger><SelectContent>{(form.produtosAtivos??[]).filter(p=>p.ativo&&!(form.simuladorProdutos??[]).some(x=>x.produto===p.nome)).map(p=><SelectItem key={p.nome} value={p.nome}>{p.nome}</SelectItem>)}</SelectContent></Select></div></div>
+          )}
         </CardContent>
       </Card>
 
