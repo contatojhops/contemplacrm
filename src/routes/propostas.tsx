@@ -167,12 +167,17 @@ function SimuladorTab() {
   const [novoCliente, setNovoCliente] = useState("");
 
   useEffect(() => {
+    const activeProducts = (config.produtosAtivos ?? []).filter(item => item.ativo).map(item => item.nome);
+    if (activeProducts.length && !activeProducts.includes(produto)) {
+      setProduto(activeProducts.includes("Veículo") ? "Veículo" : activeProducts[0]);
+      return;
+    }
     const settings = config.simuladorProdutos?.find(item => item.produto === produto);
     setTaxaAdmin(settings?.taxaAdmin ?? config.taxaAdmin);
     setFundoReserva(settings?.fundoReserva ?? config.fundoReserva);
     setComissao(settings?.comissao ?? config.comissao);
     setValorSeguro(settings?.valorSeguro ?? config.valorSeguroDefault);
-  }, [produto, config.simuladorProdutos, config.taxaAdmin, config.fundoReserva, config.comissao, config.valorSeguroDefault]);
+  }, [produto, config.produtosAtivos, config.simuladorProdutos, config.taxaAdmin, config.fundoReserva, config.comissao, config.valorSeguroDefault]);
 
   const result = useMemo(() => calcularSimulacao({
     valorCarta, prazo, taxaAdmin, fundoReserva, seguro, valorSeguro, comissao,
