@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useConfig, useLeads } from "@/lib/store";
 import { toast } from "sonner";
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown } from "lucide-react";
+import { DataSection } from "@/components/DataSection";
 import type { EtapaItem, TagItem, Template } from "@/lib/types";
 
 export const Route = createFileRoute("/configuracoes")({ head: () => pageHead("Configurações", "Preferências e perfil do consultor."), component: ConfigPage });
@@ -89,6 +90,8 @@ function ConfigPage() {
           <div><Label>Comissão (%)</Label><Input type="number" step="0.1" value={form.comissao} onChange={(e) => setForm({ ...form, comissao: Number(e.target.value) })} /></div>
         </CardContent>
       </Card>
+
+      <DataSection />
 
       <Card>
         <CardHeader><CardTitle>Pipeline — Etapas</CardTitle></CardHeader>
