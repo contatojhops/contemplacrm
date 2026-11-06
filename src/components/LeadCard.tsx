@@ -1,10 +1,9 @@
 import { PipelineBadge } from "./PipelineBadge";
 import { stageDays, localDate } from "@/lib/crm";
 import type { Lead, Produto, Pipeline } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil, ArrowRight, Calendar, ArrowRightLeft } from "lucide-react";
-import { calcScore, scoreColor, formatBRL } from "@/lib/scoring";
+import { formatBRL } from "@/lib/scoring";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -17,10 +16,10 @@ const produtoColor: Record<string, string> = {
   "Outros": "bg-gray-500/15 text-gray-700 border-gray-500/30",
 };
 
-const scoreClass = {
-  red: "bg-destructive text-destructive-foreground",
-  yellow: "bg-warning text-warning-foreground",
-  green: "bg-success text-success-foreground",
+const temperaturaClass: Record<string, string> = {
+  Frio: "bg-blue-500/15 text-blue-700 border border-blue-500/30",
+  Morno: "bg-gray-500/15 text-gray-700 border border-gray-500/30",
+  Quente: "bg-red-500/15 text-red-700 border border-red-500/30",
 };
 
 export interface LeadCardProps {
@@ -39,8 +38,7 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
-  const score = calcScore(lead);
-  const c = scoreColor(score);
+  const temperatura = lead.detalhesCliente?.temperatura ?? "Morno";
 
   return (
     <div
@@ -52,7 +50,7 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
     >
       <div className="flex items-start justify-between gap-2">
         <div className="font-semibold text-sm leading-tight">{lead.nome}</div>
-        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${scoreClass[c]}`}>{score}</span>
+        <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${temperaturaClass[temperatura] ?? temperaturaClass.Morno}`}>{temperatura}</span>
       </div>
       {showPipeline && <PipelineBadge pipeline={pipeline} />}
       <div className="flex flex-wrap gap-1">
@@ -61,13 +59,10 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
       <div className="text-xs text-muted-foreground">
         {lead.origem} · {formatBRL(lead.valorCarta)}
       </div>
-      {(lead.detalhesCliente?.objetivo || lead.detalhesCliente?.capacidadeMensal != null || lead.detalhesCliente?.temperatura) && (
+      {(lead.detalhesCliente?.objetivo || lead.detalhesCliente?.capacidadeMensal != null) && (
         <div className="space-y-1 text-[11px]">
           {lead.detalhesCliente?.objetivo && <div className="text-foreground line-clamp-2"><span className="text-muted-foreground">Objetivo:</span> {lead.detalhesCliente.objetivo}</div>}
-          <div className="flex flex-wrap gap-1">
-            {lead.detalhesCliente?.capacidadeMensal != null && <span className="rounded bg-muted px-1.5 py-0.5">Capacidade: {formatBRL(lead.detalhesCliente.capacidadeMensal)}/mês</span>}
-            {lead.detalhesCliente?.temperatura && <span className="rounded bg-muted px-1.5 py-0.5">{lead.detalhesCliente.temperatura}</span>}
-          </div>
+          {lead.detalhesCliente?.capacidadeMensal != null && <div><span className="rounded bg-muted px-1.5 py-0.5">Capacidade: {formatBRL(lead.detalhesCliente.capacidadeMensal)}/mês</span></div>}
         </div>
       )}
       {lead.detalhesCliente?.atualizacoes?.trim() && (
@@ -96,7 +91,3 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
 }
 
 export { produtoColor };
-export function ScoreBadge({ score }: { score: number }) {
-  const c = scoreColor(score);
-  return <Badge className={scoreClass[c]}>{score}</Badge>;
-}

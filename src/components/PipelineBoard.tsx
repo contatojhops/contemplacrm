@@ -17,10 +17,10 @@ import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useLeads, usePipelines, useTarefas, useConfig } from "@/lib/store";
 import type { Lead, Etapa, Pipeline } from "@/lib/types";
-import { LeadCard, ScoreBadge, produtoColor } from "@/components/LeadCard";
+import { LeadCard, produtoColor } from "@/components/LeadCard";
 import { LeadModal } from "@/components/LeadModal";
 import { PipelineSelector } from "@/components/PipelineSelector";
-import { calcScore, formatBRL } from "@/lib/scoring";
+import { formatBRL } from "@/lib/scoring";
 
 
 
@@ -30,6 +30,9 @@ function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPi
   const { setNodeRef, isOver } = useDroppable({ id: etapa });
   const total = leads.reduce((s, l) => s + l.valorCarta, 0);
   const headerColor =
+    ["Lead novo", "Contato Realizado"].includes(etapa) ? "bg-blue-500/10 text-blue-700 border-blue-500/30" :
+    ["Reunião agendada", "Proposta enviada"].includes(etapa) ? "bg-yellow-500/15 text-yellow-800 border-yellow-500/30" :
+    etapa === "Aguardando pagamento" ? "bg-orange-500/15 text-orange-800 border-orange-500/30" :
     etapa === "Fechado" ? "bg-success/10 text-success border-success/30" :
     etapa === "Perdido" ? "bg-destructive/10 text-destructive border-destructive/30" :
     "bg-accent border-border";
@@ -215,7 +218,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
                 <TableHead>Produto</TableHead>
                 <TableHead>Origem</TableHead>
                 <TableHead>Etapa</TableHead>
-                <TableHead>Score</TableHead>
+                <TableHead>Temperatura</TableHead>
                 <TableHead>Próximo Follow-up</TableHead>
                 <TableHead>Valor Carta</TableHead>
                 <TableHead>Ações</TableHead>
@@ -230,7 +233,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
                   <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${produtoColor[l.produto] ?? "bg-muted text-muted-foreground border-border"}`}>{l.produto}</span></TableCell>
                   <TableCell>{l.origem}</TableCell>
                   <TableCell><Select value={l.etapa} onValueChange={v => move(l, v as Etapa)}><SelectTrigger aria-label={`Etapa de ${l.nome}`}><SelectValue /></SelectTrigger><SelectContent>{stages.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent></Select></TableCell>
-                  <TableCell><ScoreBadge score={calcScore(l)} /></TableCell>
+                  <TableCell><span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium border ${l.detalhesCliente?.temperatura === "Frio" ? "bg-blue-500/15 text-blue-700 border-blue-500/30" : l.detalhesCliente?.temperatura === "Quente" ? "bg-red-500/15 text-red-700 border-red-500/30" : "bg-gray-500/15 text-gray-700 border-gray-500/30"}`}>{l.detalhesCliente?.temperatura ?? "Morno"}</span></TableCell>
                   <TableCell>{l.proximoFollowUp ? localDate(l.proximoFollowUp).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell>{formatBRL(l.valorCarta)}</TableCell>
                   <TableCell>
