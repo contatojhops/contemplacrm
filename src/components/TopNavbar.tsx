@@ -4,7 +4,7 @@ import { FEATURES } from "@/lib/features";
 import { MobileNavigation } from "./MobileNavigation";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Bell, Search, User, CalendarClock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Bell, Search, Settings, CalendarClock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -23,7 +23,6 @@ export function TopNavbar() {
   const [clientes] = useClientes();
   const [propostas] = usePropostas();
   const [tarefas] = useTarefas();
-  const [config] = useConfig();
   const [q, setQ] = useState("");
   const navigate = useNavigate();
 
@@ -94,7 +93,6 @@ export function TopNavbar() {
     return [...taskNotifications, ...staleLeadNotifications].slice(0, 12);
   }, [leads, tarefas]);
 
-  const initials = (config.consultorNome || "?").split(" ").filter(Boolean).map((n) => n[0]).slice(0, 2).join("");
   const openAgenda = () => navigate({ to: "/agenda" });
 
   return (
@@ -164,9 +162,47 @@ export function TopNavbar() {
           </div>
         </PopoverContent>
       </Popover>
-      <Link to="/configuracoes" className="h-9 w-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold overflow-hidden">
-        {config.consultorFoto ? <img src={config.consultorFoto} alt="" className="h-full w-full object-cover" /> : initials || <User className="h-4 w-4" />}
-      </Link>
+      <div className="ml-auto">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button aria-label="Atalhos de configurações" title="Atalhos de configurações" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 p-2">
+            <div className="px-2 py-1.5">
+              <p className="text-sm font-semibold">Configurações</p>
+              <p className="text-xs text-muted-foreground">Acesso rápido às seções</p>
+            </div>
+            <div className="space-y-1">
+              <Button variant="ghost" className="w-full justify-start text-sm" onClick={() => navigate({ to: "/configuracoes" })}>Visão geral de configurações</Button>
+              {[
+                ["perfil", "Perfil do Consultor"],
+                ["simulador", "Configurações do Simulador por Produto"],
+                ["dados", "Dados"],
+                ["etapas", "Pipeline — Etapas"],
+                ["produtos", "Produtos"],
+                ["origens", "Origens de Lead"],
+                ["tags", "Tags Customizáveis"],
+                ["templates", "Templates de Mensagem"],
+                ["aparencia", "Aparência"],
+              ].map(([section, label]) => (
+                <Button
+                  key={section}
+                  variant="ghost"
+                  className="w-full justify-start text-sm"
+                  onClick={() => {
+                    navigate({ to: "/configuracoes" });
+                    window.location.hash = section;
+                  }}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
     </header>
   );
 }
