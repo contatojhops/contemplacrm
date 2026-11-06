@@ -262,7 +262,8 @@ function ClienteProfilePage() {
                 <div><Label>Valor da carta (R$)</Label><Input type="number" value={cliente.valorCarta} onChange={(e) => update({ valorCarta: Number(e.target.value) })} /></div>
                 <div><Label>Prazo preferido (meses)</Label><Input type="number" value={cliente.prazoMeses ?? 60} onChange={(e) => {
                   const prazo = Number(e.target.value);
-                  const taxas = (cliente.valorCarta * (config.taxaAdmin + config.fundoReserva)) / 100;
+                  const productConfig = config.simuladorProdutos?.find(item => item.produto === cliente.produto);
+                  const taxas = (cliente.valorCarta * ((productConfig?.taxaAdmin ?? config.taxaAdmin) + (productConfig?.fundoReserva ?? config.fundoReserva))) / 100;
                   const parcela = prazo > 0 ? (cliente.valorCarta + taxas) / prazo : 0;
                   update({ prazoMeses: prazo, parcelaEstimada: parcela });
                 }} /></div>
