@@ -288,6 +288,12 @@ function AgendaPage() {
       const ex = prev.some((p) => p.id === t.id);
       return ex ? prev.map((p) => p.id === t.id ? t : p) : [t, ...prev];
     });
+    if (t.proximaAcaoId) {
+      const date = localDate(t.data);
+      setLeads(prev => prev.map(lead => lead.id === t.lead_id && lead.detalhesCliente?.proximaAcao?.id === t.proximaAcaoId
+        ? { ...lead, detalhesCliente: { ...lead.detalhesCliente, proximaAcao: { ...lead.detalhesCliente.proximaAcao, data: t.data, hora: date.toTimeString().slice(0, 5), tipo: t.tipo, descricao: t.descricao ?? t.titulo } } }
+        : lead));
+    }
     toast.success(editing ? "Tarefa atualizada!" : "Tarefa criada!");
     setEditing(null);
   };
