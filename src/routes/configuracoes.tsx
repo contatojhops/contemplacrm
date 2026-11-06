@@ -30,6 +30,19 @@ function ConfigPage() {
   const [novaOrigem, setNovaOrigem] = useState("");
   const [novaTag, setNovaTag] = useState({ nome: "", cor: "#3b82f6" });
   const [novoTemplate, setNovoTemplate] = useState<Template>({ id: "", nome: "", canal: "WhatsApp", texto: "" });
+  const [activeSection, setActiveSection] = useState(() => typeof window !== "undefined" && ["perfil","simulador","dados","etapas","produtos","origens","tags","templates","aparencia"].includes(window.location.hash.slice(1)) ? window.location.hash.slice(1) : "perfil");
+  useEffect(() => {
+    const syncSection = () => {
+      const section = window.location.hash.slice(1);
+      if (["perfil","simulador","dados","etapas","produtos","origens","tags","templates","aparencia"].includes(section)) setActiveSection(section);
+    };
+    window.addEventListener("hashchange", syncSection);
+    return () => window.removeEventListener("hashchange", syncSection);
+  }, []);
+  const selectSection = (section: string) => {
+    setActiveSection(section);
+    window.history.replaceState(null, "", `#${section}`);
+  };
 
   const save = () => {
     if (!form.consultorNome.trim() || (form.etapas ?? []).some(e => !e.nome.trim()) || new Set((form.etapas ?? []).map(e => e.nome.trim().toLowerCase())).size !== (form.etapas ?? []).length || (form.produtosAtivos ?? []).some(p => !p.nome.trim()) || new Set((form.produtosAtivos ?? []).map(p => p.nome.trim().toLowerCase())).size !== (form.produtosAtivos ?? []).length || (form.origens ?? []).some(o => !o.trim()) || new Set((form.origens ?? []).map(o => o.trim().toLowerCase())).size !== (form.origens ?? []).length || [form.metaMensal, form.taxaAdmin, form.fundoReserva, form.comissao, ...(form.simuladorProdutos ?? []).flatMap(p => [p.taxaAdmin, p.fundoReserva, p.comissao, p.valorSeguro])].some(v => !Number.isFinite(v) || v < 0)) { toast.error("Confira os campos do consultor e os valores."); return; }
@@ -99,12 +112,25 @@ function ConfigPage() {
   };
 
   return (
-    <div className="p-6 space-y-4 max-w-4xl">
+    <div className="p-6 space-y-4 max-w-5xl">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Personalize seu CRM</p>
+        <p className="text-muted-foreground">Personalize seu CRM por área.</p>
       </div>
-
+      <div className="flex gap-2 overflow-x-auto pb-2 border-b"><Button key="perfil" size="sm" variant={activeSection === "perfil" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("perfil")}>Perfil do Consultor</Button>
+        <Button key="simulador" size="sm" variant={activeSection === "simulador" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("simulador")}>Configurações do Simulador por Produto</Button>
+        <Button key="dados" size="sm" variant={activeSection === "dados" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("dados")}>Dados</Button>
+        <Button key="etapas" size="sm" variant={activeSection === "etapas" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("etapas")}>Pipeline — Etapas</Button>
+        <Button key="produtos" size="sm" variant={activeSection === "produtos" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("produtos")}>Produtos</Button>
+        <Button key="origens" size="sm" variant={activeSection === "origens" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("origens")}>Origens de Lead</Button>
+        <Button key="tags" size="sm" variant={activeSection === "tags" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("tags")}>Tags Customizáveis</Button>
+        <Button key="templates" size="sm" variant={activeSection === "templates" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("templates")}>Templates de Mensagem</Button>
+        <Button key="aparencia" size="sm" variant={activeSection === "aparencia" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("aparencia")}>Aparência</Button></div>
+      <div>
+        <h2 className="text-xl font-semibold">{activeSection === "perfil" ? "Perfil do Consultor" : activeSection === "simulador" ? "Configurações do Simulador por Produto" : activeSection === "dados" ? "Dados" : activeSection === "etapas" ? "Pipeline — Etapas" : activeSection === "produtos" ? "Produtos" : activeSection === "origens" ? "Origens de Lead" : activeSection === "tags" ? "Tags Customizáveis" : activeSection === "templates" ? "Templates de Mensagem" : activeSection === "aparencia" ? "Aparência" : "Configurações"}</h2>
+        <p className="text-sm text-muted-foreground">{activeSection === "perfil" ? "Dados pessoais, contato e metas." : activeSection === "simulador" ? "Taxas, comissão e seguro para cada produto." : activeSection === "dados" ? "Importação, exportação e restauração de backups." : activeSection === "etapas" ? "Organize as etapas da jornada comercial." : activeSection === "produtos" ? "Gerencie os produtos disponíveis no CRM." : activeSection === "origens" ? "Organize de onde vêm seus leads." : activeSection === "tags" ? "Crie etiquetas para classificar seus contatos." : activeSection === "templates" ? "Gerencie mensagens prontas para seus contatos." : activeSection === "aparencia" ? "Personalize a experiência visual do CRM." : "Selecione uma área para configurar."}</p>
+      </div>
+      {activeSection === "perfil" && (
       <Card>
         <CardHeader><CardTitle>Perfil do Consultor</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -120,7 +146,9 @@ function ConfigPage() {
           <div><Label>Meta Mensal de Vendas</Label><Input type="number" value={form.metaUnidades ?? 0} onChange={(e) => setForm({ ...form, metaUnidades: Number(e.target.value) })} /></div>
         </CardContent>
       </Card>
+      )}
 
+      {activeSection === "simulador" && (
       <Card>
         <CardHeader><CardTitle>Configurações do Simulador por Produto</CardTitle><p className="text-sm text-muted-foreground">Defina taxas e comissão uma única vez para cada produto. O simulador aplicará os valores automaticamente ao selecionar o produto.</p></CardHeader>
         <CardContent className="space-y-3">
@@ -140,9 +168,11 @@ function ConfigPage() {
           )}
         </CardContent>
       </Card>
+      )}
 
-      <DataSection />
+      {activeSection === "dados" && <DataSection />}
 
+      {activeSection === "etapas" && (
       <Card>
         <CardHeader><CardTitle>Pipeline — Etapas</CardTitle></CardHeader>
         <CardContent className="space-y-2">
@@ -163,7 +193,9 @@ function ConfigPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {activeSection === "produtos" && (
       <Card>
         <CardHeader><CardTitle>Produtos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
@@ -188,7 +220,9 @@ function ConfigPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {activeSection === "origens" && (
       <Card>
         <CardHeader><CardTitle>Origens de Lead</CardTitle></CardHeader>
         <CardContent className="space-y-2">
@@ -204,7 +238,9 @@ function ConfigPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {activeSection === "tags" && (
       <Card>
         <CardHeader><CardTitle>Tags Customizáveis</CardTitle></CardHeader>
         <CardContent className="space-y-2">
@@ -224,7 +260,9 @@ function ConfigPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {activeSection === "templates" && (
       <Card>
         <CardHeader><CardTitle>Templates de Mensagem</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -254,7 +292,9 @@ function ConfigPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {activeSection === "aparencia" && (
       <Card>
         <CardHeader><CardTitle>Aparência</CardTitle></CardHeader>
         <CardContent className="flex items-center justify-between">
@@ -262,6 +302,7 @@ function ConfigPage() {
           <Switch checked={form.darkMode ?? false} onCheckedChange={(v) => { setForm({ ...form, darkMode: v }); document.documentElement.classList.toggle("dark", v); }} />
         </CardContent>
       </Card>
+      )}
 
       <div className="sticky bottom-4 flex justify-end">
         <Button size="lg" onClick={save}>Salvar alterações</Button>
