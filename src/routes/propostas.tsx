@@ -108,8 +108,9 @@ function PropostasTab() {
           </TableHeader>
           <TableBody>
             {filtered.map((p) => {
-              const taxa = p.taxaAdmin ?? config.taxaAdmin;
-              const comissao = p.comissaoEstimada ?? (p.valorCarta * config.comissao) / 100;
+              const productConfig = config.simuladorProdutos?.find(item => item.produto === p.produto);
+              const taxa = p.taxaAdmin ?? productConfig?.taxaAdmin ?? config.taxaAdmin;
+              const comissao = p.comissaoEstimada ?? (p.valorCarta * (productConfig?.comissao ?? config.comissao)) / 100;
               const open = expanded === p.id;
               return (
                 <>
@@ -128,7 +129,7 @@ function PropostasTab() {
                     <TableRow>
                       <TableCell colSpan={9} className="bg-accent/30">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 text-sm">
-                          <div><div className="text-xs text-muted-foreground">Fundo Reserva</div>{p.fundoReserva ?? config.fundoReserva}%</div>
+                          <div><div className="text-xs text-muted-foreground">Fundo Reserva</div>{p.fundoReserva ?? productConfig?.fundoReserva ?? config.fundoReserva}%</div>
                           <div><div className="text-xs text-muted-foreground">Seguro</div>{p.seguro ? "Sim" : "Não"}</div>
                           <div><div className="text-xs text-muted-foreground">Valor Seguro</div>{p.valorSeguro ? formatBRL(p.valorSeguro) : "—"}</div>
                           <div><div className="text-xs text-muted-foreground">Comissão Estimada</div><span className="text-success font-bold">{formatBRL(comissao)}</span></div>
