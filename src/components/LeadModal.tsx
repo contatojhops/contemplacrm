@@ -30,8 +30,15 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   });
 
   useEffect(() => {
-    if (open) setForm(initial ?? { pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID, nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0, origem: "WhatsApp", perfil: "", observacoes: "" });
-  }, [open, initial, defaultPipelineId]);
+    if (open) setForm(initial ?? {
+      pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
+      nome: "", telefone: "", email: "",
+      produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel",
+      valorCarta: 0,
+      origem: config.origens?.[0] ?? "WhatsApp",
+      perfil: "", observacoes: "",
+    });
+  }, [open, initial, defaultPipelineId, pipelines, config.produtosAtivos, config.origens]);
 
   const update = (patch: Partial<Lead>) => setForm((f) => ({ ...f, ...patch }));
 
