@@ -86,11 +86,11 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>{initial ? "Editar Lead" : "Novo Lead"}</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2">
           <div className="col-span-2">
             <Label>Nome completo</Label>
             <Input value={form.nome ?? ""} onChange={(e) => update({ nome: e.target.value })} />
@@ -156,7 +156,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
             <Textarea value={form.observacoes ?? ""} onChange={(e) => update({ observacoes: e.target.value })} />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t pt-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={submit}>Salvar</Button>
         </DialogFooter>
