@@ -62,6 +62,7 @@ export interface Documento {
 }
 
 export interface ProximaAcao {
+  id?: string;
   data: string;
   hora?: string;
   tipo: string;
@@ -127,6 +128,9 @@ export interface Cliente {
   documentos?: Documento[];
   proximaAcao?: ProximaAcao;
   acoesConcluidas?: AcaoConcluida[];
+  objetivo?: string;
+  capacidadeMensal?: number;
+  temperatura?: "Frio" | "Morno" | "Quente";
 }
 
 export type TarefaTipo = "Ligação" | "WhatsApp" | "Reunião" | "E-mail" | "Visita" | "Follow-up" | "Enviar Proposta" | "Recontato" | "Outro";
@@ -145,6 +149,7 @@ export interface Tarefa {
   prioridade?: TarefaPrioridade;
   descricao?: string;
   lembrete?: boolean;
+  proximaAcaoId?: string;
 }
 
 export type PipelineCor = "azul" | "verde" | "amarelo" | "vermelho" | "roxo";
