@@ -9,6 +9,7 @@ export const SAVE_ERROR = "Não foi possível salvar. Verifique sua conexão e t
 
 type Entry = { data: unknown; loaded: boolean };
 const state = new Map<CloudTable, Entry>();
+const loadErrors = new Map<CloudTable, string>();
 const listeners = new Set<() => void>();
 let userId: string | null = null;
 let version = 0;
@@ -19,6 +20,7 @@ export function setCloudUser(id: string | null) {
   if (id === userId) return;
   userId = id;
   state.clear();
+  loadErrors.clear();
   emit();
   if (id) void reloadAll();
 }
@@ -42,14 +44,25 @@ export async function reloadAll() {
   const results = await Promise.allSettled(tables.map(fetchTable));
   if (uid !== userId) return;
   results.forEach((r, i) => {
-    if (r.status === "fulfilled") state.set(tables[i], { data: r.value, loaded: true });
-    else if (!state.get(tables[i])?.loaded) state.set(tables[i], { data: tables[i] === "configuracoes" ? null : [], loaded: true });
+    const table = tables[i];
+    if (r.status === "fulfilled") {
+      state.set(table, { data: r.value, loaded: true });
+      loadErrors.delete(table);
+    } else {
+      // A failed request must never be mistaken for an empty CRM collection.
+      state.set(table, { data: state.get(table)?.data ?? (table === "configuracoes" ? null : []), loaded: false });
+      loadErrors.set(table, "Não foi possível carregar seus dados. Verifique sua conexão e tente novamente.");
+    }
   });
   emit();
 }
 
 export const cloudReady = () => [...COLLECTION_TABLES, "configuracoes" as const].every((t) => state.get(t)?.loaded);
+export function cloudLoadError() {
+  return [...loadErrors.values()][0] ?? null;
+}
 export const useCloudReady = () => useSyncExternalStore(subscribe, () => (userId ? cloudReady() : false), () => false);
+export const useCloudError = () => useSyncExternalStore(subscribe, cloudLoadError, () => null);
 
 type Item = { id: string };
 export function diffCollection(prev: Item[], next: Item[]) {
