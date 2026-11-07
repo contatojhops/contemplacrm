@@ -1,6 +1,7 @@
 import { PipelineBadge } from "./PipelineBadge";
 import { metrics, periodRange, inRange, leadCsv, type Period } from "@/lib/pipelines";
-import { Download } from "lucide-react";
+import { Download, Upload } from "lucide-react";
+import { LeadImportDialog } from "@/components/LeadImportDialog";
 import { changeStage, DELETE_CONFIRMATION, localDate } from "@/lib/crm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,6 +75,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const [filterOrigem, setFilterOrigem] = useState<string>("all");
   const [filterEtapa, setFilterEtapa] = useState<string>("all");
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Lead | null>(null);
 
   const [lossLead, setLossLead] = useState<Lead | null>(null);
@@ -147,7 +149,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-2"><PipelineBadge pipeline={pipeline} /><span className="text-sm text-muted-foreground">{summary.leads} leads · {summary.ativos} ativos · {formatBRL(summary.aberto)} em aberto · {summary.conversao.toFixed(1)}% conversão</span></div>
         </div>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Exportar CSV</Button><Button disabled={pipeline?.arquivada} onClick={() => { setEditing(null); setModalOpen(true); }}>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Exportar CSV</Button><Button variant="outline" disabled={pipeline?.arquivada} onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" />Importar leads</Button><Button disabled={pipeline?.arquivada} onClick={() => { setEditing(null); setModalOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />Novo Lead
         </Button></div>
       </div>
@@ -250,6 +252,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
 
       <Dialog open={!!lossLead} onOpenChange={open => !open && setLossLead(null)}><DialogContent><DialogHeader><DialogTitle>Motivo da perda</DialogTitle></DialogHeader><Textarea aria-label="Motivo da perda" value={lossReason} onChange={e => setLossReason(e.target.value)} /><DialogFooter><Button variant="outline" onClick={() => setLossLead(null)}>Cancelar</Button><Button onClick={() => { if (!lossLead || !lossReason.trim()) { toast.error("Informe o motivo da perda."); return; } setLeads(prev => prev.map(l => l.id === lossLead.id ? changeStage(l, "Perdido", lossReason) : l)); setLossLead(null); toast.success("Lead marcado como perdido"); }}>Confirmar perda</Button></DialogFooter></DialogContent></Dialog>
       <Dialog open={!!transfer} onOpenChange={v=>!v&&setTransfer(null)}><DialogContent><DialogHeader><DialogTitle>Mover para outra pipeline</DialogTitle></DialogHeader><Select value={destination} onValueChange={setDestination}><SelectTrigger aria-label="Pipeline de destino"><SelectValue placeholder="Selecione a pipeline" /></SelectTrigger><SelectContent>{pipelines.filter(p=>!p.arquivada&&p.id!==transfer?.pipeline_id).map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select><DialogFooter><Button variant="outline" onClick={()=>setTransfer(null)}>Cancelar</Button><Button disabled={!destination} onClick={()=>{if(!transfer)return;setLeads(prev=>prev.map(l=>l.id===transfer.id?{...l,pipeline_id:destination}:l));setTransfer(null);toast.success("Lead movido para outra pipeline");}}>Mover lead</Button></DialogFooter></DialogContent></Dialog>
+      <LeadImportDialog defaultPipelineId={pipelineId} open={importOpen} onOpenChange={setImportOpen} />
       <LeadModal defaultPipelineId={pipelineId} open={modalOpen} onOpenChange={setModalOpen} initial={editing} onSave={handleSave} />
     </div>
   );
