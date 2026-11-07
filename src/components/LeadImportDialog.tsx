@@ -101,18 +101,15 @@ function parseCsv(text: string) {
     };
     if (!row.nome.trim()) row.error = "Nome não informado.";
     else if (!normalizePhone(row.telefone)) row.error = "Telefone não informado.";
+    else if (row.email.trim() && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(row.email.trim())) row.error = "E-mail inválido.";
     else if (!Number.isFinite(valorCarta) || (capacidade !== undefined && !Number.isFinite(capacidade))) row.error = "Valor numérico inválido.";
     return row;
   });
 }
 
 function downloadTemplate() {
-  const examples = [
-    ["Maria Silva", "71991234567", "maria@email.com", "Imóvel", "100000", "Meta Ads", "Novo Lead", "Investidor", "Comprar imóvel para renda", "1500", "Quente", "Interessada em carta de crédito"],
-    ["João Souza", "71987654321", "", "Veículo", "80000", "Indicação", "Contato Realizado", "Empresário", "Trocar de veículo", "1200", "Morno", ""],
-  ];
   const quote = (value: string) => `"${value.replace(/"/g, '""')}"`;
-  const csv = "\uFEFF" + [TEMPLATE_HEADERS, ...examples].map(row => row.map(quote).join(";")).join("\r\n");
+  const csv = "\uFEFF" + TEMPLATE_HEADERS.map(quote).join(";") + "\r\n";
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -262,7 +259,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
                   {analyzedRows.map(row => <tr key={row.line} className="border-t"><td className="p-2"><div className="font-medium">{row.nome || "Sem nome"}</div><div className="text-xs text-muted-foreground">Linha {row.line}</div></td><td className="p-2 whitespace-nowrap">{row.telefone || "—"}</td><td className="p-2">{row.error ? <span className="text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{row.error}</span> : row.duplicateId ? <span className="text-amber-600">Já existe: {row.duplicateName}</span> : <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Novo lead</span>}</td><td className="p-2">{row.duplicateId && !row.error ? <Select value={row.action} onValueChange={value => setRows(prev => prev.map(item => item.line === row.line ? { ...item, action: value as ImportRow["action"] } : item))}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merge">Acrescentar</SelectItem><SelectItem value="replace">Substituir</SelectItem><SelectItem value="skip">Ignorar</SelectItem></SelectContent></Select> : row.error ? "Corrigir arquivo" : "Importar"}</td></tr>)}
                 </tbody></table>
               </div>
-              <p className="text-xs text-muted-foreground">Duplicidade identificada por telefone ou e-mail. “Acrescentar” preenche apenas campos vazios; “Substituir” atualiza os dados da planilha sem apagar o histórico comercial; “Ignorar” mantém o cadastro atual.</p>
+              <p className="text-xs text-muted-foreground">Duplicidade identificada por telefone ou e-mail. “Acrescentar” preenche apenas campos vazios e mantém pipeline/etapa atuais; “Substituir” atualiza os dados da planilha, direciona para a pipeline escolhida e preserva o histórico comercial; “Ignorar” mantém o cadastro atual.</p>
             </div>
           </>}
         </div>
