@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { LeadImportDialog } from "@/components/LeadImportDialog";
+import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +10,7 @@ export function DataSection() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<ReturnType<typeof validateBackup> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [leadImportOpen, setLeadImportOpen] = useState(false);
 
   const importLocal = async () => {
     const local = readLocalData();
@@ -40,6 +43,7 @@ export function DataSection() {
       <CardHeader><CardTitle>Dados</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
+          <Button variant="default" onClick={() => setLeadImportOpen(true)} disabled={busy}><Upload className="h-4 w-4 mr-2" />Importar leads da planilha</Button>
           <Button variant="outline" onClick={importLocal} disabled={busy}>Importar dados deste navegador</Button>
           <Button variant="outline" onClick={exportBackup}>Exportar backup (JSON)</Button>
           <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={busy}>Restaurar backup (JSON)</Button>
@@ -52,6 +56,7 @@ export function DataSection() {
           </div>
         )}
       </CardContent>
+      <LeadImportDialog open={leadImportOpen} onOpenChange={setLeadImportOpen} />
     </Card>
   );
 }
