@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Upload, Download, FileSpreadsheet, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -131,9 +131,10 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
   const [initialStage, setInitialStage] = useState((config.etapas ?? []).find(stage => !["Fechado", "Perdido"].includes(stage.nome))?.nome ?? "Novo Lead");
   const [busy, setBusy] = useState(false);
   const stages = (config.etapas ?? []).map(stage => stage.nome);
+  useEffect(() => { if (open) { setPipelineChoice(defaultPipelineId ?? ""); setInitialStage((config.etapas ?? []).find(stage => !["Fechado", "Perdido"].includes(stage.nome))?.nome ?? "Novo Lead"); } }, [open, defaultPipelineId, config.etapas]);
   const validRows = rows.filter(row => !row.error);
-  const duplicates = validRows.filter(row => row.duplicateId);
-  const readyCount = validRows.filter(row => !row.duplicateId || row.action !== "skip").length;
+  const duplicates = analyzedRows.filter(row => row.duplicateId && !row.error);
+  const readyCount = analyzedRows.filter(row => !row.error && (!row.duplicateId || row.action !== "skip")).length;
 
   const analyzedRows = useMemo(() => {
     if (!rows.length) return rows;
