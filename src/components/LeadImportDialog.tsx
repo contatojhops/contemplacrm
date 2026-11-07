@@ -182,9 +182,10 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
     setBusy(true);
     try {
       let destinationId = pipelineChoice;
+      let createdPipeline: Pipeline | undefined;
       if (pipelineChoice === "__new__") {
-        const created: Pipeline = { id: crypto.randomUUID(), nome: newPipelineName.trim(), cor: "azul" as PipelineCor, ordem: pipelines.length, arquivada: false, created_at: new Date().toISOString() };
-        destinationId = created.id;
+        createdPipeline = { id: crypto.randomUUID(), nome: newPipelineName.trim(), cor: "azul" as PipelineCor, ordem: pipelines.length, arquivada: false, created_at: new Date().toISOString() };
+        destinationId = createdPipeline.id;
       }
       const now = new Date().toISOString();
       const imported: Lead[] = [];
@@ -215,7 +216,6 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
           };
         } else imported.push(existing ? { ...existing, ...incoming } : incoming);
       }
-      const createdPipeline = pipelineChoice === "__new__" ? pipelines.find(p => p.id === destinationId) : undefined;
       const changedLeads = [...Object.values(replacements), ...imported];
       await importCollections({ ...(createdPipeline ? { pipelines: [createdPipeline] } : {}), leads: changedLeads }, null, true);
       const added = imported.filter(item => !leads.some(lead => lead.id === item.id)).length;
