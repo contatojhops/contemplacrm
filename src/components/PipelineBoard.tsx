@@ -30,9 +30,9 @@ function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPi
   const { setNodeRef, isOver } = useDroppable({ id: etapa });
   const total = leads.reduce((s, l) => s + l.valorCarta, 0);
   const headerColor =
-    ["Lead novo", "Contato Realizado"].includes(etapa) ? "bg-blue-500/10 text-blue-700 border-blue-500/30" :
-    ["Reunião agendada", "Proposta enviada"].includes(etapa) ? "bg-yellow-500/15 text-yellow-800 border-yellow-500/30" :
-    etapa === "Aguardando pagamento" ? "bg-orange-500/15 text-orange-800 border-orange-500/30" :
+    ["Lead novo", "Contato Realizado"].includes(etapa) ? "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-800" :
+    ["Reunião agendada", "Proposta enviada"].includes(etapa) ? "bg-yellow-100 text-yellow-900 border-yellow-300 dark:bg-yellow-950/60 dark:text-yellow-200 dark:border-yellow-800" :
+    etapa === "Aguardando pagamento" ? "bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950/60 dark:text-orange-200 dark:border-orange-800" :
     etapa === "Fechado" ? "bg-success/10 text-success border-success/30" :
     etapa === "Perdido" ? "bg-destructive/10 text-destructive border-destructive/30" :
     "bg-accent border-border";
