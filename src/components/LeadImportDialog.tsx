@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfig, useLeads, usePipelines } from "@/lib/store";
+import { importCollections } from "@/lib/cloudStore";
 import type { Lead, Pipeline, PipelineCor } from "@/lib/types";
 
 type ImportRow = {
@@ -121,8 +122,8 @@ function downloadTemplate() {
 
 export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { open: boolean; onOpenChange: (open: boolean) => void; defaultPipelineId?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [leads, setLeads] = useLeads();
-  const [pipelines, setPipelines] = usePipelines();
+  const [leads] = useLeads();
+  const [pipelines] = usePipelines();
   const [config] = useConfig();
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [fileName, setFileName] = useState("");
@@ -174,6 +175,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
   const importNow = async () => {
     const finalRows = analyzedRows;
     if (!finalRows.length || finalRows.some(row => row.error)) { toast.error("Corrija as linhas inválidas antes de importar."); return; }
+    if (!readyCount) { toast.info("Não há leads novos ou atualizações para importar."); return; }
     if (!pipelineChoice) { toast.error("Selecione uma pipeline de destino."); return; }
     if (pipelineChoice === "__new__" && !newPipelineName.trim()) { toast.error("Informe o nome da nova pipeline."); return; }
     if (pipelineChoice === "__new__" && pipelines.some(p => p.nome.toLowerCase() === newPipelineName.trim().toLowerCase())) { toast.error("Já existe uma pipeline com esse nome."); return; }
@@ -182,7 +184,6 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
       let destinationId = pipelineChoice;
       if (pipelineChoice === "__new__") {
         const created: Pipeline = { id: crypto.randomUUID(), nome: newPipelineName.trim(), cor: "azul" as PipelineCor, ordem: pipelines.length, arquivada: false, created_at: new Date().toISOString() };
-        setPipelines(prev => [...prev, created]);
         destinationId = created.id;
       }
       const now = new Date().toISOString();
@@ -214,11 +215,9 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
           };
         } else imported.push(existing ? { ...existing, ...incoming } : incoming);
       }
-      setLeads(prev => {
-        const replaced = prev.map(lead => replacements[lead.id] ?? lead);
-        const withoutReplaced = replaced.filter(lead => !imported.some(item => item.id === lead.id));
-        return [...imported, ...withoutReplaced];
-      });
+      const createdPipeline = pipelineChoice === "__new__" ? pipelines.find(p => p.id === destinationId) : undefined;
+      const changedLeads = [...Object.values(replacements), ...imported];
+      await importCollections({ ...(createdPipeline ? { pipelines: [createdPipeline] } : {}), leads: changedLeads }, null, true);
       const added = imported.filter(item => !leads.some(lead => lead.id === item.id)).length;
       const updated = Object.keys(replacements).length + imported.filter(item => leads.some(lead => lead.id === item.id)).length;
       const skipped = finalRows.filter(row => row.duplicateId && row.action === "skip").length;
