@@ -82,7 +82,7 @@ function parseCsv(text: string) {
   const numberValue = (raw: string) => {
     if (!raw.trim()) return 0;
     const cleaned = raw.replace(/R\$\s?/gi, "").replace(/\s/g, "");
-    const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned;
+    const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : /^\d{1,3}(\.\d{3})+$/.test(cleaned) ? cleaned.replace(/\./g, "") : cleaned;
     const value = Number(normalized);
     return Number.isFinite(value) && value >= 0 ? value : NaN;
   };
