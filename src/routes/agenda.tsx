@@ -255,7 +255,7 @@ function AgendaPage() {
         const details = lead.detalhesCliente ?? {};
         if (completed) {
           const action = details.proximaAcao;
-          if (action?.id !== task.proximaAcaoId) return lead;
+          if (!action || action.id !== task.proximaAcaoId) return lead;
           return { ...lead, detalhesCliente: {
             ...details,
             proximaAcao: undefined,
@@ -294,7 +294,7 @@ function AgendaPage() {
         if (lead.id !== t.lead_id) return lead;
         const details = lead.detalhesCliente;
         const action = details?.proximaAcao;
-        if (!details || action?.id !== t.proximaAcaoId) return lead;
+        if (!details || !action || action.id !== t.proximaAcaoId) return lead;
         return {
           ...lead,
           detalhesCliente: {
@@ -322,7 +322,7 @@ function AgendaPage() {
         if (lead.id !== t.lead_id) return lead;
         const details = lead.detalhesCliente;
         const action = details?.proximaAcao;
-        if (!details || action?.id !== t.proximaAcaoId) return lead;
+        if (!details || !action || action.id !== t.proximaAcaoId) return lead;
         return {
           ...lead,
           detalhesCliente: {
