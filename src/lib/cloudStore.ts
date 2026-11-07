@@ -98,7 +98,9 @@ export function useCloudCollection<T extends Item>(table: CollectionTable) {
   useSyncExternalStore(subscribe, () => version, () => 0);
   const value = (state.get(table)?.data as T[] | undefined) ?? EMPTY;
   const save = useCallback((update: T[] | ((previous: T[]) => T[])) => {
-    if (!userId) return;
+    const uid = userId;
+    const generation = authGeneration;
+    if (!uid) return;
     const prev = ((state.get(table)?.data as T[]) ?? []);
     const next = typeof update === "function" ? (update as (p: T[]) => T[])(prev) : update;
     state.set(table, { data: next, loaded: true });
