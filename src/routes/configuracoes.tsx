@@ -296,10 +296,13 @@ function ConfigPage() {
 
       {activeSection === "aparencia" && (
       <Card>
-        <CardHeader><CardTitle>Aparência</CardTitle></CardHeader>
-        <CardContent className="flex items-center justify-between">
-          <Label>Modo escuro</Label>
-          <Switch checked={form.darkMode ?? false} onCheckedChange={(v) => { setForm({ ...form, darkMode: v }); document.documentElement.classList.toggle("dark", v); }} />
+        <CardHeader><CardTitle>Identidade visual</CardTitle></CardHeader>
+        <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1">
+            <Label>Dark Premium</Label>
+            <p className="text-sm text-muted-foreground">O tema escuro faz parte da identidade oficial do ContemplaCRM, com superfícies azul-marinho, destaques em azul elétrico e acentos violeta.</p>
+          </div>
+          <Badge className="w-fit border border-primary/30 bg-primary/15 text-primary hover:bg-primary/15">Ativo</Badge>
         </CardContent>
       </Card>
       )}
