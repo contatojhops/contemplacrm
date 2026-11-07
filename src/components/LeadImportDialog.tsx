@@ -132,10 +132,6 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
   const [busy, setBusy] = useState(false);
   const stages = (config.etapas ?? []).map(stage => stage.nome);
   useEffect(() => { if (open) { setPipelineChoice(defaultPipelineId ?? ""); setInitialStage((config.etapas ?? []).find(stage => !["Fechado", "Perdido"].includes(stage.nome))?.nome ?? "Novo Lead"); } }, [open, defaultPipelineId, config.etapas]);
-  const validRows = rows.filter(row => !row.error);
-  const duplicates = analyzedRows.filter(row => row.duplicateId && !row.error);
-  const readyCount = analyzedRows.filter(row => !row.error && (!row.duplicateId || row.action !== "skip")).length;
-
   const analyzedRows = useMemo(() => {
     if (!rows.length) return rows;
     const existingByPhone = new Map<string, Lead>();
@@ -161,6 +157,9 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
       return { ...row, duplicateId: match.id, duplicateName: match.nome, duplicateKind: byPhone && byEmail ? "both" : byPhone ? "phone" : "email" };
     });
   }, [rows, leads]);
+  const validRows = analyzedRows.filter(row => !row.error);
+  const duplicates = analyzedRows.filter(row => row.duplicateId && !row.error);
+  const readyCount = validRows.filter(row => !row.duplicateId || row.action !== "skip").length;
 
   const loadFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".csv")) { toast.error("Por enquanto, utilize o modelo CSV disponibilizado nesta tela. Ele abre normalmente no Excel e no Google Planilhas."); return; }
