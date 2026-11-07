@@ -212,7 +212,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
             perfil: fill(existing.perfil, incoming.perfil), observacoes: fill(existing.observacoes, incoming.observacoes),
             detalhesCliente: { ...existing.detalhesCliente, objetivo: fill(existing.detalhesCliente?.objetivo, row.objetivo), capacidadeMensal: existing.detalhesCliente?.capacidadeMensal ?? row.capacidadeMensal, temperatura: existing.detalhesCliente?.temperatura ?? row.temperatura },
           };
-        } else imported.push(incoming);
+        } else imported.push(existing ? { ...existing, ...incoming } : incoming);
       }
       setLeads(prev => {
         const replaced = prev.map(lead => replacements[lead.id] ?? lead);
