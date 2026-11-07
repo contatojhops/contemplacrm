@@ -101,7 +101,7 @@ function parseCsv(text: string) {
     };
     if (!row.nome.trim()) row.error = "Nome não informado.";
     else if (!normalizePhone(row.telefone)) row.error = "Telefone não informado.";
-    else if (row.email.trim() && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(row.email.trim())) row.error = "E-mail inválido.";
+    else if (row.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())) row.error = "E-mail inválido.";
     else if (!Number.isFinite(valorCarta) || (capacidade !== undefined && !Number.isFinite(capacidade))) row.error = "Valor numérico inválido.";
     return row;
   });
