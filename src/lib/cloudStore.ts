@@ -12,13 +12,19 @@ const state = new Map<CloudTable, Entry>();
 const loadErrors = new Map<CloudTable, string>();
 const listeners = new Set<() => void>();
 let userId: string | null = null;
+let authGeneration = 0;
 let version = 0;
+
+function isCurrentUser(uid: string, generation: number) {
+  return userId === uid && authGeneration === generation;
+}
 const emit = () => { version++; listeners.forEach((l) => l()); };
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
 
 export function setCloudUser(id: string | null) {
   if (id === userId) return;
   userId = id;
+  authGeneration++;
   state.clear();
   loadErrors.clear();
   emit();
@@ -39,10 +45,11 @@ async function fetchTable(table: CloudTable) {
 
 export async function reloadAll() {
   const uid = userId;
+  const generation = authGeneration;
   if (!uid) return;
   const tables: CloudTable[] = [...COLLECTION_TABLES, "configuracoes"];
   const results = await Promise.allSettled(tables.map(fetchTable));
-  if (uid !== userId) return;
+  if (!isCurrentUser(uid, generation)) return;
   results.forEach((r, i) => {
     const table = tables[i];
     if (r.status === "fulfilled") {
@@ -74,12 +81,13 @@ export function diffCollection(prev: Item[], next: Item[]) {
   };
 }
 
-async function persistCollection(table: CollectionTable, prev: Item[], next: Item[]) {
+async function persistCollection(table: CollectionTable, prev: Item[], next: Item[], uid: string, generation: number) {
   const { upserts, deletes } = diffCollection(prev, next);
   const now = new Date().toISOString();
   if (upserts.length) {
-    const { error } = await supabase.from(table).upsert(upserts.map((i) => ({ id: i.id, user_id: userId!, data: i as never, updated_at: now })), { onConflict: "user_id,id" });
+    const { error } = await supabase.from(table).upsert(upserts.map((i) => ({ id: i.id, user_id: uid, data: i as never, updated_at: now })), { onConflict: "user_id,id" });
     if (error) throw error;
+    if (!isCurrentUser(uid, generation)) throw new Error("A conta foi alterada durante o salvamento.");
   }
   if (deletes.length) {
     const { error } = await supabase.from(table).delete().in("id", deletes);
@@ -91,12 +99,17 @@ export function useCloudCollection<T extends Item>(table: CollectionTable) {
   useSyncExternalStore(subscribe, () => version, () => 0);
   const value = (state.get(table)?.data as T[] | undefined) ?? EMPTY;
   const save = useCallback((update: T[] | ((previous: T[]) => T[])) => {
-    if (!userId) return;
+    const uid = userId;
+    const generation = authGeneration;
+    if (!uid) return;
     const prev = ((state.get(table)?.data as T[]) ?? []);
     const next = typeof update === "function" ? (update as (p: T[]) => T[])(prev) : update;
     state.set(table, { data: next, loaded: true });
     emit();
-    persistCollection(table, prev, next).catch(() => {
+    persistCollection(table, prev, next, uid, generation).catch(() => {
+      // Never let an old request restore a previous account's data after logout
+      // or account switching. The database RLS remains the final access control.
+      if (!isCurrentUser(uid, generation)) return;
       state.set(table, { data: prev, loaded: true });
       emit();
       toast.error(SAVE_ERROR);
@@ -114,14 +127,16 @@ export function useCloudDocument<T extends object>(defaults: T) {
   // causes an effect -> setState -> render loop (Maximum update depth exceeded).
   const value = useMemo(() => (stored ? ({ ...defaults, ...stored } as T) : defaults), [defaults, stored]);
   const save = useCallback((update: T | ((previous: T) => T)) => {
-    if (!userId) return;
+    const uid = userId;
+    const generation = authGeneration;
+    if (!uid) return;
     const prevRaw = state.get("configuracoes")?.data as T | null;
     const prev = prevRaw ? ({ ...defaults, ...prevRaw } as T) : defaults;
     const next = typeof update === "function" ? (update as (p: T) => T)(prev) : update;
     state.set("configuracoes", { data: next, loaded: true });
     emit();
-    supabase.from("configuracoes").upsert({ user_id: userId, data: next as never, updated_at: new Date().toISOString() }, { onConflict: "user_id" }).then(({ error }) => {
-      if (!error) return;
+    supabase.from("configuracoes").upsert({ user_id: uid, data: next as never, updated_at: new Date().toISOString() }, { onConflict: "user_id" }).then(({ error }) => {
+      if (!error || !isCurrentUser(uid, generation)) return;
       state.set("configuracoes", { data: prevRaw, loaded: true });
       emit();
       toast.error(SAVE_ERROR);
@@ -132,21 +147,27 @@ export function useCloudDocument<T extends object>(defaults: T) {
 
 /** Bulk insert without duplicating ids already in the cloud. Returns how many records were added. */
 export async function importCollections(payload: Partial<Record<CollectionTable, Item[]>>, config?: object | null, overwrite = false) {
+  const uid = userId;
+  const generation = authGeneration;
+  if (!uid) throw new Error("Faça login novamente antes de importar os dados.");
   let count = 0;
   for (const table of COLLECTION_TABLES) {
+    if (!isCurrentUser(uid, generation)) throw new Error("A conta foi alterada durante a importação. Entre novamente e tente importar.");
     const incoming = (payload[table] ?? []).filter((i) => i && typeof i.id === "string");
     if (!incoming.length) continue;
     const existing = new Set(((state.get(table)?.data as Item[]) ?? []).map((i) => i.id));
     const rows = overwrite ? incoming : incoming.filter((i) => !existing.has(i.id));
     if (!rows.length) continue;
-    const { error } = await supabase.from(table).upsert(rows.map((i) => ({ id: i.id, user_id: userId!, data: i as never })), { onConflict: "user_id,id" });
+    const { error } = await supabase.from(table).upsert(rows.map((i) => ({ id: i.id, user_id: uid, data: i as never })), { onConflict: "user_id,id" });
     if (error) throw error;
     count += overwrite ? rows.length : rows.filter((i) => !existing.has(i.id)).length;
   }
   if (config && (overwrite || !state.get("configuracoes")?.data)) {
-    const { error } = await supabase.from("configuracoes").upsert({ user_id: userId!, data: config as never }, { onConflict: "user_id" });
+    if (!isCurrentUser(uid, generation)) throw new Error("A conta foi alterada durante a importação. Entre novamente e tente importar.");
+    const { error } = await supabase.from("configuracoes").upsert({ user_id: uid, data: config as never }, { onConflict: "user_id" });
     if (error) throw error;
   }
+  if (!isCurrentUser(uid, generation)) throw new Error("A conta foi alterada durante a importação. Entre novamente e confira os dados da conta original.");
   await reloadAll();
   return count;
 }

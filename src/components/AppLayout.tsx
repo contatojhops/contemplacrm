@@ -22,12 +22,17 @@ export function AppLayout() {
   const [config] = useConfig();
 
   useEffect(() => {
+    let authEventReceived = false;
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "TOKEN_REFRESHED") return;
+      authEventReceived = true;
       setCloudUser(session?.user.id ?? null);
       setAuth(session ? "in" : "out");
     });
     supabase.auth.getUser().then(({ data }) => {
+      // getUser may resolve after a newer auth event (including sign-out).
+      // Do not let that stale response restore the previous account in memory.
+      if (authEventReceived) return;
       setCloudUser(data.user?.id ?? null);
       setAuth(data.user ? "in" : "out");
     });
