@@ -162,7 +162,12 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
   const loadFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".csv")) { toast.error("Por enquanto, utilize o modelo CSV disponibilizado nesta tela. Ele abre normalmente no Excel e no Google Planilhas."); return; }
     try {
-      const parsed = parseCsv(await file.text());
+      setRows([]); setFileName(file.name);
+      const buffer = await file.arrayBuffer();
+      let csvText: string;
+      try { csvText = new TextDecoder("utf-8", { fatal: true }).decode(buffer); }
+      catch { csvText = new TextDecoder("windows-1252").decode(buffer); }
+      const parsed = parseCsv(csvText);
       setRows(parsed);
       setFileName(file.name);
       toast.success(`${parsed.length} linhas analisadas.`);
