@@ -81,12 +81,13 @@ export function diffCollection(prev: Item[], next: Item[]) {
   };
 }
 
-async function persistCollection(table: CollectionTable, prev: Item[], next: Item[], uid: string) {
+async function persistCollection(table: CollectionTable, prev: Item[], next: Item[], uid: string, generation: number) {
   const { upserts, deletes } = diffCollection(prev, next);
   const now = new Date().toISOString();
   if (upserts.length) {
     const { error } = await supabase.from(table).upsert(upserts.map((i) => ({ id: i.id, user_id: uid, data: i as never, updated_at: now })), { onConflict: "user_id,id" });
     if (error) throw error;
+    if (!isCurrentUser(uid, generation)) throw new Error("A conta foi alterada durante o salvamento.");
   }
   if (deletes.length) {
     const { error } = await supabase.from(table).delete().in("id", deletes);
@@ -105,7 +106,7 @@ export function useCloudCollection<T extends Item>(table: CollectionTable) {
     const next = typeof update === "function" ? (update as (p: T[]) => T[])(prev) : update;
     state.set(table, { data: next, loaded: true });
     emit();
-    persistCollection(table, prev, next, uid).catch(() => {
+    persistCollection(table, prev, next, uid, generation).catch(() => {
       // Never let an old request restore a previous account's data after logout
       // or account switching. The database RLS remains the final access control.
       if (!isCurrentUser(uid, generation)) return;
