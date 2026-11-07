@@ -60,5 +60,5 @@ export const defaultConfig: Configuracoes = {
   origens: ["Meta Ads", "Instagram", "WhatsApp", "Indicação", "Orgânico", "Outros"],
   tags: defaultTags,
   templates: defaultTemplates,
-  darkMode: false,
+  darkMode: true,
 };

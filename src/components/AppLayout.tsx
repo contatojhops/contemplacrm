@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useConfig } from "@/lib/store";
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Sidebar } from "./Sidebar";
 import { TopNavbar } from "./TopNavbar";
@@ -19,7 +18,11 @@ export function AppLayout() {
   const [auth, setAuth] = useState<"loading" | "in" | "out">("loading");
   const ready = useCloudReady();
   const cloudError = useCloudError();
-  const [config] = useConfig();
+
+  useEffect(() => {
+    // Dark Premium is the official visual identity of ContemplaCRM.
+    document.documentElement.classList.add("dark");
+  }, []);
 
   useEffect(() => {
     let authEventReceived = false;
@@ -46,7 +49,6 @@ export function AppLayout() {
     if (auth === "out" && !isPublic) navigate({ to: "/login", replace: true });
     if (auth === "in" && path === "/login") navigate({ to: "/", replace: true });
   }, [auth, isPublic, path, navigate]);
-  useEffect(() => { document.documentElement.classList.toggle("dark", !!config.darkMode); }, [config.darkMode]);
 
   if (isPublic) return <><Outlet /><Toaster richColors position="top-right" /></>;
   if (auth !== "in") return <div className="min-h-screen bg-background" />;

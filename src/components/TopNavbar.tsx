@@ -96,15 +96,15 @@ export function TopNavbar() {
   const openAgenda = () => navigate({ to: "/agenda" });
 
   return (
-    <header className="sticky top-0 z-30 h-14 border-b bg-card/80 backdrop-blur flex items-center gap-3 px-4">
+    <header className="sticky top-0 z-30 h-16 border-b border-border/70 bg-background/85 backdrop-blur-xl flex items-center gap-3 px-4 lg:px-7">
       <MobileNavigation />
       <div className="flex-1 max-w-xl relative">
         <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Buscar leads ou clientes..." value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input className="pl-9 h-10 rounded-xl bg-card/75 border-border/80 focus-visible:ring-primary/40" placeholder="Buscar leads ou clientes..." value={q} onChange={(e) => setQ(e.target.value)} />
         {results.length > 0 && (
-          <div className="absolute top-full mt-1 left-0 right-0 bg-popover border rounded-md shadow-lg max-h-80 overflow-y-auto">
+          <div className="absolute top-full mt-2 left-0 right-0 bg-popover/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl max-h-80 overflow-y-auto">
             {results.map((r, i) => (
-              <Button key={i} variant="ghost" onClick={() => { if(r.to === '/pipeline/$id' && r.id) navigate({to:'/pipeline/$id',params:{id:r.id}}); else if(r.to === '/clientes/$id' && r.id) navigate({to:'/clientes/$id',params:{id:r.id}}); else navigate({to:'/propostas'}); setQ(""); }} className="w-full h-auto text-left px-3 py-2 hover:bg-accent flex items-center justify-between text-sm">
+              <Button key={i} variant="ghost" onClick={() => { if(r.to === '/pipeline/$id' && r.id) navigate({to:'/pipeline/$id',params:{id:r.id}}); else if(r.to === '/clientes/$id' && r.id) navigate({to:'/clientes/$id',params:{id:r.id}}); else navigate({to:'/propostas'}); setQ(""); }} className="w-full h-auto text-left px-3 py-2.5 rounded-none hover:bg-accent/70 flex items-center justify-between text-sm">
                 <div>
                   <div className="font-medium">{r.nome}</div>
                   <div className="text-xs text-muted-foreground">{r.tipo} · {r.sub}</div>
@@ -117,15 +117,15 @@ export function TopNavbar() {
       </div>
       <Popover>
         <PopoverTrigger asChild>
-          <Button aria-label="Notificações" variant="ghost" size="icon" className="relative h-9 w-9 rounded-full hover:bg-accent flex items-center justify-center">
+          <Button aria-label="Notificações" variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-accent flex items-center justify-center">
             <Bell className="h-4 w-4" />
             {notifications.length > 0 && (
               <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{notifications.length}</span>
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-[min(22rem,calc(100vw-1.5rem))] p-0">
-          <div className="px-3 py-3 border-b flex items-center justify-between gap-2">
+        <PopoverContent align="end" className="w-[min(22rem,calc(100vw-1.5rem))] p-0 border-border/80 bg-popover/95 backdrop-blur-xl shadow-2xl">
+          <div className="px-3 py-3 border-b border-border/70 flex items-center justify-between gap-2">
             <div>
               <div className="text-sm font-semibold">Sua rotina</div>
               <div className="text-xs text-muted-foreground">{notifications.length} item(ns) exigem atenção</div>
@@ -141,12 +141,7 @@ export function TopNavbar() {
               </div>
             )}
             {notifications.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={openAgenda}
-                className="w-full px-3 py-3 text-left border-b last:border-0 hover:bg-accent transition-colors flex items-start gap-2"
-              >
+              <button key={item.id} type="button" onClick={openAgenda} className="w-full px-3 py-3 text-left border-b border-border/60 last:border-0 hover:bg-accent/70 transition-colors flex items-start gap-2">
                 {item.overdue ? <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" /> : <CalendarClock className="h-4 w-4 mt-0.5 text-primary shrink-0" />}
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium leading-snug">{item.title}</span>
@@ -157,7 +152,7 @@ export function TopNavbar() {
               </button>
             ))}
           </div>
-          <div className="p-2 border-t">
+          <div className="p-2 border-t border-border/70">
             <Button className="w-full" size="sm" onClick={openAgenda}>Ver todas as tarefas</Button>
           </div>
         </PopoverContent>
@@ -165,11 +160,11 @@ export function TopNavbar() {
       <div className="ml-auto">
         <Popover>
           <PopoverTrigger asChild>
-            <Button aria-label="Atalhos de configurações" title="Atalhos de configurações" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
+            <Button aria-label="Atalhos de configurações" title="Atalhos de configurações" variant="ghost" size="icon" className="h-10 w-10 rounded-xl">
               <Settings className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="w-64 p-2">
+          <PopoverContent align="end" className="w-64 p-2 border-border/80 bg-popover/95 backdrop-blur-xl shadow-2xl">
             <div className="px-2 py-1.5">
               <p className="text-sm font-semibold">Configurações</p>
               <p className="text-xs text-muted-foreground">Acesso rápido às seções</p>
@@ -187,15 +182,7 @@ export function TopNavbar() {
                 ["templates", "Templates de Mensagem"],
                 ["aparencia", "Aparência"],
               ].map(([section, label]) => (
-                <Button
-                  key={section}
-                  variant="ghost"
-                  className="w-full justify-start text-sm"
-                  onClick={() => {
-                    navigate({ to: "/configuracoes" });
-                    window.location.hash = section;
-                  }}
-                >
+                <Button key={section} variant="ghost" className="w-full justify-start text-sm" onClick={() => { navigate({ to: "/configuracoes" }); window.location.hash = section; }}>
                   {label}
                 </Button>
               ))}

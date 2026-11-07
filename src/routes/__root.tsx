@@ -7,10 +7,10 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Consórcio CRM" },
+      { title: "ContemplaCRM" },
       { name: "description", content: "CRM para consultores de consórcio" },
-      { property: "og:title", content: "Consórcio CRM" },
-      { name: "twitter:title", content: "Consórcio CRM" },
+      { property: "og:title", content: "ContemplaCRM" },
+      { name: "twitter:title", content: "ContemplaCRM" },
       { property: "og:description", content: "CRM para consultores de consórcio" },
       { name: "twitter:description", content: "CRM para consultores de consórcio" },
       { name: "twitter:card", content: "summary_large_image" },
