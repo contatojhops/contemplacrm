@@ -159,7 +159,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   };
 
   const startKanbanPan = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
+    if (event.pointerType !== "mouse" || event.button !== 0) return;
     const target = event.target as HTMLElement;
     if (!target.closest("[data-kanban-pan-area]")) return;
     if (target.closest("[data-kanban-drag], button, a, input, select, [role='button']")) return;
@@ -402,7 +402,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
               onPointerMove={moveKanbanPan}
               onPointerUp={stopKanbanPan}
               onPointerCancel={stopKanbanPan}
-              className={`overflow-x-auto overflow-y-hidden pb-8 touch-pan-y ${isPanning ? "cursor-grabbing select-none" : "cursor-grab"}`}
+              className={`overflow-x-auto overflow-y-hidden pb-8 ${isPanning ? "cursor-grabbing select-none" : "cursor-grab"}`}
               aria-label="Quadros do Kanban. Arraste para os lados para navegar."
             >
               <div ref={kanbanContentRef} className="flex w-max gap-3">
