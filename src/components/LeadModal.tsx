@@ -179,10 +179,11 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
             <div className="mt-2 flex justify-end">
               <Button type="button" size="sm" variant="secondary" onClick={registerUpdate}>Registrar atualização</Button>
             </div>
-            {(form.detalhesCliente?.historicoAtualizacoes ?? []).length > 0 && <section className="space-y-2 mt-3">
+            <section className="space-y-2 mt-3">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Histórico</h4>
+              {(form.detalhesCliente?.historicoAtualizacoes ?? []).length === 0 && <p className="text-xs text-muted-foreground">Nenhuma atualização registrada.</p>}
               {(form.detalhesCliente?.historicoAtualizacoes ?? []).slice().reverse().map(item => <div key={item.id} className="rounded-md border border-border p-2 text-xs"><div className="text-muted-foreground mb-1">{item.data ? new Date(item.data).toLocaleString("pt-BR") : "Data não disponível (registro anterior)"}</div>{item.texto}</div>)}
-            </section>}
+            </section>
           </div>
         </div>
         <DialogFooter className="shrink-0 border-t pt-3">
