@@ -7,11 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DndContext, pointerWithin, type DragEndEvent, PointerSensor, useSensor, useSensors, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Plus, Search, LayoutGrid, List as ListIcon, Trash2 } from "lucide-react";
+import { Plus, Search, LayoutGrid, List as ListIcon, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,6 +50,7 @@ function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPi
       </div>
       <div
         ref={setNodeRef}
+        data-kanban-pan-area="true"
         className={`flex-1 min-h-[200px] bg-muted/40 border border-t-0 border-border rounded-b-lg p-2 space-y-2 ${isOver ? "bg-accent" : ""}`}
       >
         <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
@@ -90,6 +91,107 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const [bulkProduct, setBulkProduct] = useState("");
   const [bulkOrigin, setBulkOrigin] = useState("");
   const [bulkTemperature, setBulkTemperature] = useState("");
+  const kanbanViewportRef = useRef<HTMLDivElement | null>(null);
+  const kanbanContentRef = useRef<HTMLDivElement | null>(null);
+  const kanbanScrollbarRef = useRef<HTMLDivElement | null>(null);
+  const panRef = useRef<{ pointerId: number; startX: number; startScrollLeft: number } | null>(null);
+  const [kanbanMetrics, setKanbanMetrics] = useState({ scrollWidth: 0, clientWidth: 0, scrollLeft: 0 });
+  const [kanbanVisible, setKanbanVisible] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+
+  useEffect(() => {
+    if (view !== "kanban") {
+      setKanbanVisible(false);
+      setKanbanMetrics({ scrollWidth: 0, clientWidth: 0, scrollLeft: 0 });
+      return;
+    }
+    const viewport = kanbanViewportRef.current;
+    if (!viewport) return;
+
+    const syncMetrics = () => {
+      const next = {
+        scrollWidth: viewport.scrollWidth,
+        clientWidth: viewport.clientWidth,
+        scrollLeft: viewport.scrollLeft,
+      };
+      setKanbanMetrics(current =>
+        current.scrollWidth === next.scrollWidth &&
+        current.clientWidth === next.clientWidth &&
+        Math.abs(current.scrollLeft - next.scrollLeft) < 1
+          ? current
+          : next
+      );
+      const scrollbar = kanbanScrollbarRef.current;
+      if (scrollbar && Math.abs(scrollbar.scrollLeft - next.scrollLeft) > 1) {
+        scrollbar.scrollLeft = next.scrollLeft;
+      }
+    };
+
+    syncMetrics();
+    viewport.addEventListener("scroll", syncMetrics, { passive: true });
+    const resizeObserver = new ResizeObserver(syncMetrics);
+    resizeObserver.observe(viewport);
+    if (kanbanContentRef.current) resizeObserver.observe(kanbanContentRef.current);
+    const intersectionObserver = new IntersectionObserver(
+      entries => setKanbanVisible(entries[0]?.isIntersecting ?? false),
+      { threshold: 0.05 }
+    );
+    intersectionObserver.observe(viewport);
+
+    return () => {
+      viewport.removeEventListener("scroll", syncMetrics);
+      resizeObserver.disconnect();
+      intersectionObserver.disconnect();
+    };
+  }, [view, filtered.length, stages.length]);
+
+  const handleKanbanScrollbar = (event: React.UIEvent<HTMLDivElement>) => {
+    const viewport = kanbanViewportRef.current;
+    if (viewport && Math.abs(viewport.scrollLeft - event.currentTarget.scrollLeft) > 1) {
+      viewport.scrollLeft = event.currentTarget.scrollLeft;
+    }
+  };
+
+  const startKanbanPan = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (!target.closest("[data-kanban-pan-area]")) return;
+    if (target.closest("[data-kanban-drag], button, a, input, select, [role='button']")) return;
+    const viewport = kanbanViewportRef.current;
+    if (!viewport || viewport.scrollWidth <= viewport.clientWidth) return;
+    panRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: viewport.scrollLeft,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsPanning(true);
+  };
+
+  const moveKanbanPan = (event: React.PointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current;
+    const viewport = kanbanViewportRef.current;
+    if (!pan || !viewport || pan.pointerId !== event.pointerId) return;
+    viewport.scrollLeft = pan.startScrollLeft - (event.clientX - pan.startX);
+  };
+
+  const stopKanbanPan = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (panRef.current?.pointerId !== event.pointerId) return;
+    panRef.current = null;
+    setIsPanning(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const scrollKanban = (direction: "left" | "right") => {
+    const viewport = kanbanViewportRef.current;
+    if (!viewport) return;
+    viewport.scrollBy({
+      left: (direction === "right" ? 1 : -1) * viewport.clientWidth * 0.72,
+      behavior: "smooth",
+    });
+  };
 
   const [lossLead, setLossLead] = useState<Lead | null>(null);
   const [lossReason, setLossReason] = useState("");
@@ -285,21 +387,76 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
       </Card>}
 
       {view === "kanban" ? (
-        <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
-          <div className="flex gap-3 overflow-x-auto pb-4">
-            {stages.map((e) => (
-              <Column
-                key={e}
-                etapa={e}
-                leads={filtered.filter((l) => l.etapa === e)}
-                onEdit={(l) => { setEditing(l); setModalOpen(true); }}
-                onAdvance={handleAdvance}
-                pipelines={pipelines} showPipeline={!pipelineId}
-                onTransfer={l=>{setTransfer(l);setDestination("");}}
-              />
-            ))}
-          </div>
-        </DndContext>
+        <>
+          <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+            <div
+              ref={kanbanViewportRef}
+              data-kanban-pan-area="true"
+              onPointerDown={startKanbanPan}
+              onPointerMove={moveKanbanPan}
+              onPointerUp={stopKanbanPan}
+              onPointerCancel={stopKanbanPan}
+              className={`overflow-x-auto overflow-y-hidden pb-4 touch-pan-y select-none ${isPanning ? "cursor-grabbing" : "cursor-grab"}`}
+              aria-label="Quadros do Kanban. Arraste para os lados para navegar."
+            >
+              <div ref={kanbanContentRef} className="flex w-max gap-3">
+                {stages.map((e) => (
+                  <Column
+                    key={e}
+                    etapa={e}
+                    leads={filtered.filter((l) => l.etapa === e)}
+                    onEdit={(l) => { setEditing(l); setModalOpen(true); }}
+                    onAdvance={handleAdvance}
+                    pipelines={pipelines} showPipeline={!pipelineId}
+                    onTransfer={l=>{setTransfer(l);setDestination("");}}
+                  />
+                ))}
+              </div>
+            </div>
+          </DndContext>
+
+          {kanbanVisible && kanbanMetrics.scrollWidth > kanbanMetrics.clientWidth + 2 && (
+            <>
+              <div className="pointer-events-none fixed bottom-3 left-4 right-4 z-40 flex justify-center lg:left-[17rem]">
+                <div
+                  ref={kanbanScrollbarRef}
+                  onScroll={handleKanbanScrollbar}
+                  tabIndex={0}
+                  aria-label="Barra de rolagem horizontal do Kanban"
+                  className="kanban-horizontal-scrollbar pointer-events-auto h-3 w-full max-w-full overflow-x-auto overflow-y-hidden rounded-full border border-white/10 bg-[#0D172B]/90 px-1 shadow-lg backdrop-blur-xl"
+                >
+                  <div style={{ width: `${kanbanMetrics.scrollWidth}px`, height: "1px" }} />
+                </div>
+              </div>
+              <div className="fixed right-4 top-1/2 z-40 flex flex-col gap-2">
+                {kanbanMetrics.scrollLeft > 2 && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    aria-label="Rolar Kanban para a esquerda"
+                    title="Voltar nos quadros"
+                    className="h-9 w-9 rounded-full border-white/15 bg-[#0D172B]/95 text-white shadow-xl backdrop-blur-xl hover:bg-primary hover:text-white"
+                    onClick={() => scrollKanban("left")}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                )}
+                {kanbanMetrics.scrollLeft < kanbanMetrics.scrollWidth - kanbanMetrics.clientWidth - 2 && (
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    aria-label="Rolar Kanban para a direita"
+                    title="Avançar nos quadros"
+                    className="h-9 w-9 rounded-full border-white/15 bg-[#0D172B]/95 text-white shadow-xl backdrop-blur-xl hover:bg-primary hover:text-white"
+                    onClick={() => scrollKanban("right")}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </>
       ) : (
         <Card>
           <Table>
