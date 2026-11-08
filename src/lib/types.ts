@@ -27,6 +27,7 @@ export interface Lead {
   diasNaEtapa: number;
   criadoEm: string;
   stage_changed_at?: string;
+  historicoEtapas?: { id: string; etapaAnterior: string; etapaNova: string; data: string; atividadeRegistrada: boolean }[];
   closed_at?: string;
   motivoPerda?: string;
   detalhesCliente?: Partial<Cliente>;
@@ -133,6 +134,7 @@ export interface Cliente {
   capacidadeMensal?: number;
   temperatura?: "Frio" | "Morno" | "Quente";
   atualizacoes?: string;
+  historicoAtualizacoes?: { id: string; texto: string; data: string }[];
 }
 
 export type TarefaTipo = "Ligação" | "WhatsApp" | "Reunião" | "E-mail" | "Visita" | "Follow-up" | "Enviar Proposta" | "Recontato" | "Outro";
