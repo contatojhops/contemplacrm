@@ -213,7 +213,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
             nome: fill(existing.nome, incoming.nome), telefone: fill(existing.telefone, incoming.telefone),
             email: fill(existing.email, incoming.email), produto: fill(existing.produto, incoming.produto),
             valorCarta: existing.valorCarta || incoming.valorCarta, origem: fill(existing.origem, incoming.origem),
-            perfil: fill(existing.perfil, incoming.perfil), observacoes: fill(existing.observacoes, incoming.observacoes),
+            perfil: fill(existing.perfil, incoming.perfil ?? ""), observacoes: fill(existing.observacoes, incoming.observacoes ?? ""),
             detalhesCliente: { ...existing.detalhesCliente, objetivo: fill(existing.detalhesCliente?.objetivo, row.objetivo), capacidadeMensal: existing.detalhesCliente?.capacidadeMensal ?? row.capacidadeMensal, temperatura: existing.detalhesCliente?.temperatura ?? row.temperatura },
           };
         } else imported.push(existing ? { ...existing, ...incoming } : incoming);
