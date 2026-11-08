@@ -101,52 +101,6 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const [isPanning, setIsPanning] = useState(false);
 
   useEffect(() => {
-    if (view !== "kanban") {
-      setKanbanVisible(false);
-      setKanbanMetrics({ scrollWidth: 0, clientWidth: 0, scrollLeft: 0 });
-      return;
-    }
-    const viewport = kanbanViewportRef.current;
-    if (!viewport) return;
-
-    const syncMetrics = () => {
-      const next = {
-        scrollWidth: viewport.scrollWidth,
-        clientWidth: viewport.clientWidth,
-        scrollLeft: viewport.scrollLeft,
-      };
-      setKanbanMetrics(current =>
-        current.scrollWidth === next.scrollWidth &&
-        current.clientWidth === next.clientWidth &&
-        Math.abs(current.scrollLeft - next.scrollLeft) < 1
-          ? current
-          : next
-      );
-      const scrollbar = kanbanScrollbarRef.current;
-      if (scrollbar && Math.abs(scrollbar.scrollLeft - next.scrollLeft) > 1) {
-        scrollbar.scrollLeft = next.scrollLeft;
-      }
-    };
-
-    syncMetrics();
-    viewport.addEventListener("scroll", syncMetrics, { passive: true });
-    const resizeObserver = new ResizeObserver(syncMetrics);
-    resizeObserver.observe(viewport);
-    if (kanbanContentRef.current) resizeObserver.observe(kanbanContentRef.current);
-    const intersectionObserver = new IntersectionObserver(
-      entries => setKanbanVisible(entries[0]?.isIntersecting ?? false),
-      { threshold: 0.05 }
-    );
-    intersectionObserver.observe(viewport);
-
-    return () => {
-      viewport.removeEventListener("scroll", syncMetrics);
-      resizeObserver.disconnect();
-      intersectionObserver.disconnect();
-    };
-  }, [view, filtered.length, stages.length]);
-
-  useEffect(() => {
     const scrollbar = kanbanScrollbarRef.current;
     if (scrollbar) scrollbar.scrollLeft = kanbanMetrics.scrollLeft;
   }, [kanbanVisible, kanbanMetrics.scrollLeft]);
@@ -241,6 +195,53 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     }
     return comparison * (sortDirection === "asc" ? 1 : -1);
   }), [filtered, sortBy, sortDirection, pipelines]);
+
+  useEffect(() => {
+    if (view !== "kanban") {
+      setKanbanVisible(false);
+      setKanbanMetrics({ scrollWidth: 0, clientWidth: 0, scrollLeft: 0 });
+      return;
+    }
+    const viewport = kanbanViewportRef.current;
+    if (!viewport) return;
+
+    const syncMetrics = () => {
+      const next = {
+        scrollWidth: viewport.scrollWidth,
+        clientWidth: viewport.clientWidth,
+        scrollLeft: viewport.scrollLeft,
+      };
+      setKanbanMetrics(current =>
+        current.scrollWidth === next.scrollWidth &&
+        current.clientWidth === next.clientWidth &&
+        Math.abs(current.scrollLeft - next.scrollLeft) < 1
+          ? current
+          : next
+      );
+      const scrollbar = kanbanScrollbarRef.current;
+      if (scrollbar && Math.abs(scrollbar.scrollLeft - next.scrollLeft) > 1) {
+        scrollbar.scrollLeft = next.scrollLeft;
+      }
+    };
+
+    syncMetrics();
+    viewport.addEventListener("scroll", syncMetrics, { passive: true });
+    const resizeObserver = new ResizeObserver(syncMetrics);
+    resizeObserver.observe(viewport);
+    if (kanbanContentRef.current) resizeObserver.observe(kanbanContentRef.current);
+    const intersectionObserver = new IntersectionObserver(
+      entries => setKanbanVisible(entries[0]?.isIntersecting ?? false),
+      { threshold: 0.05 }
+    );
+    intersectionObserver.observe(viewport);
+
+    return () => {
+      viewport.removeEventListener("scroll", syncMetrics);
+      resizeObserver.disconnect();
+      intersectionObserver.disconnect();
+    };
+  }, [view, filtered.length, stages.length]);
+
   const toggleSort = (field: typeof sortBy) => { if (sortBy === field) setSortDirection(current => current === "asc" ? "desc" : "asc"); else { setSortBy(field); setSortDirection(field === "temperatura" ? "desc" : "asc"); } };
 
   const visibleLeadIds = sortedLeads.map(lead => lead.id);
