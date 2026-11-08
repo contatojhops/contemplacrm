@@ -295,7 +295,8 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   };
   const applyBulkStage = () => {
     if (!bulkStage || !selectedCount) return;
-    setLeads(prev => prev.map(lead => selectedLeadIds.has(lead.id) ? changeStage(lead, bulkStage as Etapa) : lead));
+    const now = new Date().toISOString();
+    setLeads(prev => prev.map(lead => selectedLeadIds.has(lead.id) ? { ...changeStage(lead, bulkStage as Etapa), historicoEtapas: [...(lead.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: lead.etapa, etapaNova: bulkStage, data: now, atividadeRegistrada: false }] } : lead));
     setBulkStage("");
     clearSelection();
     toast.success(`Etapa atualizada para ${bulkStage}`);
@@ -324,10 +325,22 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   };
 
   const handleSave = (lead: Lead) => {
-    setLeads((prev) => {
-      const exists = prev.some((p) => p.id === lead.id);
-      return exists ? prev.map((p) => p.id === lead.id ? lead : p) : [lead, ...prev];
+    const existing = leads.find(item => item.id === lead.id);
+    const changedStage = existing && existing.etapa !== lead.etapa;
+    setLeads(prev => {
+      const exists = prev.some(item => item.id === lead.id);
+      const saved = changedStage && existing ? { ...lead, etapa: existing.etapa, stage_changed_at: existing.stage_changed_at, historicoEtapas: existing.historicoEtapas } : lead;
+      return exists ? prev.map(item => item.id === lead.id ? saved : item) : [lead, ...prev];
     });
+    if (changedStage && existing) {
+      setPendingAdvance({ lead: existing, target: lead.etapa });
+      setNoActivity(false);
+      setNextType("Follow-up");
+      setNextDescription("");
+      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9,0,0,0);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setNextDateTime(d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + "T09:00");
+    }
     toast.success(editing ? "Lead atualizado!" : "Lead cadastrado com sucesso!");
     setEditing(null);
   };
