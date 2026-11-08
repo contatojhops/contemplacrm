@@ -176,11 +176,10 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const confirmAdvance = () => {
     if (!pendingAdvance) return;
     const { lead, target } = pendingAdvance;
+    if (!noActivity && (!nextDescription.trim() || !nextDateTime || !Number.isFinite(new Date(nextDateTime).getTime()))) { toast.error("Informe a descrição, data e horário da próxima atividade."); return; }
     const now = new Date().toISOString();
-    const history = [...(lead.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: lead.etapa, etapaNova: target, data: now, atividadeRegistrada: !noActivity }];
-    setLeads(prev => prev.map(item => item.id === lead.id ? { ...changeStage(item, target), historicoEtapas: [...(item.historicoEtapas ?? []), { id: history[history.length-1].id, etapaAnterior: item.etapa, etapaNova: target, data: now, atividadeRegistrada: !noActivity }] } : item));
+    setLeads(prev => prev.map(item => item.id === lead.id ? { ...changeStage(item, target), historicoEtapas: [...(item.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: item.etapa, etapaNova: target, data: now, atividadeRegistrada: !noActivity }] } : item));
     if (!noActivity) {
-      if (!nextDescription.trim() || !nextDateTime || !Number.isFinite(new Date(nextDateTime).getTime())) { toast.error("Informe a descrição, data e horário da próxima atividade."); return; }
       const taskId = crypto.randomUUID();
       const taskDate = new Date(nextDateTime).toISOString();
       setTasks(prev => [{ id: taskId, lead_id: lead.id, leadId: lead.id, titulo: nextType + ": " + nextDescription.trim(), tipo: nextType as "Follow-up" | "Ligação" | "WhatsApp" | "Reunião" | "E-mail" | "Visita" | "Enviar Proposta" | "Recontato" | "Outro", cliente: lead.nome, data: taskDate, concluida: false, prioridade: "Média", descricao: nextDescription.trim(), lembrete: true, proximaAcaoId: taskId }, ...prev]);
