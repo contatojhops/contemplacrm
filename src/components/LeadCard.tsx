@@ -71,7 +71,7 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
           <span className="font-medium text-foreground">Atualização:</span> {lead.detalhesCliente.atualizacoes}
         </div>
       )}
-      <div className="text-[11px] text-muted-foreground">{stageDays(lead)} dias nesta etapa</div>
+      <div className="space-y-0.5 text-[11px] text-muted-foreground"><div>Entrada: {localDate(lead.criadoEm).toLocaleDateString("pt-BR")}</div><div>{stageDays(lead)} dias nesta etapa</div></div>
       {lead.proximoFollowUp && (
         <div className="flex items-center gap-1 text-[11px] text-foreground">
           <Calendar className="h-3 w-3" />
