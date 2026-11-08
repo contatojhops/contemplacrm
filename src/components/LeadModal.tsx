@@ -78,7 +78,19 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
       rendaEstimada: initial?.rendaEstimada,
       proximoFollowUp: initial?.proximoFollowUp,
       proximaAcaoTipo: initial?.proximaAcaoTipo,
-      detalhesCliente: { ...initial?.detalhesCliente, objetivo: form.detalhesCliente?.objetivo, capacidadeMensal: form.detalhesCliente?.capacidadeMensal, temperatura: form.detalhesCliente?.temperatura, atualizacoes: form.detalhesCliente?.atualizacoes },
+      detalhesCliente: {
+        ...initial?.detalhesCliente,
+        objetivo: form.detalhesCliente?.objetivo,
+        capacidadeMensal: form.detalhesCliente?.capacidadeMensal,
+        temperatura: form.detalhesCliente?.temperatura,
+        atualizacoes: form.detalhesCliente?.atualizacoes,
+        historicoAtualizacoes: (() => {
+          const previous = initial?.detalhesCliente?.historicoAtualizacoes ?? [];
+          const current = form.detalhesCliente?.atualizacoes?.trim() ?? "";
+          if (!current || current === (initial?.detalhesCliente?.atualizacoes ?? "").trim()) return previous;
+          return [...previous, { id: crypto.randomUUID(), texto: current, data: now }];
+        })(),
+      },
     };
     onSave(lead);
     onOpenChange(false);
@@ -121,7 +133,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
               <SelectContent>{[...new Set([...origens, ...(form.origem ? [form.origem] : [])])].map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="col-span-2"><Label>Pipeline</Label><Select value={form.pipeline_id} onValueChange={v=>update({pipeline_id:v})}><SelectTrigger aria-label="Pipeline do lead"><SelectValue placeholder="Selecione a pipeline" /></SelectTrigger><SelectContent>{pipelines.filter(p=>!p.arquivada || p.id===initial?.pipeline_id).map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select></div>
+          <div><Label>Pipeline</Label><Select value={form.pipeline_id} onValueChange={v=>update({pipeline_id:v})}><SelectTrigger aria-label="Pipeline do lead"><SelectValue placeholder="Selecione a pipeline" /></SelectTrigger><SelectContent>{pipelines.filter(p=>!p.arquivada || p.id===initial?.pipeline_id).map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select></div>
           <div className="col-span-2"><Label>{initial ? "Etapa atual no Kanban" : "Etapa inicial no Kanban"}</Label><Select value={form.etapa ?? defaultStage} onValueChange={v=>update({etapa:v})}><SelectTrigger aria-label="Etapa do lead"><SelectValue placeholder="Selecione a etapa" /></SelectTrigger><SelectContent>{stageOptions.map(stage=><SelectItem key={stage} value={stage}>{stage}</SelectItem>)}</SelectContent></Select></div>
           <div className="col-span-2">
             <Label>Perfil do cliente</Label>
@@ -132,7 +144,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
             <Input placeholder="Ex.: comprar imóvel para renda, trocar de veículo, investir..." value={form.detalhesCliente?.objetivo ?? ""} onChange={(e) => updateCommercial({ objetivo: e.target.value })} />
           </div>
           <div>
-            <Label>Capacidade mensal disponível (R$)</Label>
+            <Label>Capacidade mensal (R$)</Label>
             <Input type="number" min="0" value={form.detalhesCliente?.capacidadeMensal ?? ""} onChange={(e) => updateCommercial({ capacidadeMensal: e.target.value === "" ? undefined : Number(e.target.value) })} />
           </div>
           <div>
@@ -147,13 +159,14 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
             </Select>
           </div>
           <div className="col-span-2">
-            <Label>Atualizações da negociação</Label>
-            <Textarea rows={3} placeholder="Registre novidades, conversas, mudanças de cenário, objeções ou próximos alinhamentos..." value={form.detalhesCliente?.atualizacoes ?? ""} onChange={(e) => updateCommercial({ atualizacoes: e.target.value })} />
-            <p className="text-xs text-muted-foreground mt-1">Use este campo para manter o contexto mais recente da negociação.</p>
-          </div>
-          <div className="col-span-2">
             <Label>Observações iniciais</Label>
             <Textarea value={form.observacoes ?? ""} onChange={(e) => update({ observacoes: e.target.value })} />
+          </div>
+          <div className="col-span-2">
+            <Label>Atualizações da negociação</Label>
+            <Textarea rows={3} placeholder="Registre uma nova atualização da negociação..." value={form.detalhesCliente?.atualizacoes ?? ""} onChange={(e) => updateCommercial({ atualizacoes: e.target.value })} />
+            <p className="text-xs text-muted-foreground mt-1">Ao salvar, a atualização será registrada com data e horário, preservando as anteriores.</p>
+            {(form.detalhesCliente?.historicoAtualizacoes ?? []).length > 0 && <div className="space-y-2 mt-2">{(form.detalhesCliente?.historicoAtualizacoes ?? []).slice().reverse().map(item => <div key={item.id} className="rounded-md border border-border p-2 text-xs"><div className="text-muted-foreground mb-1">{new Date(item.data).toLocaleString("pt-BR")}</div>{item.texto}</div>)}</div>}
           </div>
         </div>
         <DialogFooter className="shrink-0 border-t pt-3">
