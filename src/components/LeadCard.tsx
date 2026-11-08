@@ -50,7 +50,7 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
       {...listeners}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="font-semibold text-sm leading-tight">{lead.nome}</div>
+        <div className="min-w-0"><div className="font-semibold text-sm leading-tight">{lead.nome}</div>{lead.telefone && <div className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{lead.telefone}</div>}</div>
         <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${temperaturaClass[temperatura] ?? temperaturaClass.Morno}`}>{temperatura}</span>
       </div>
       {showPipeline && <PipelineBadge pipeline={pipeline} />}
