@@ -5,6 +5,7 @@ import { LeadImportDialog } from "@/components/LeadImportDialog";
 import { changeStage, DELETE_CONFIRMATION, localDate } from "@/lib/crm";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -83,6 +84,12 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Lead | null>(null);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(() => new Set());
+  const [bulkPipeline, setBulkPipeline] = useState("");
+  const [bulkStage, setBulkStage] = useState("");
+  const [bulkProduct, setBulkProduct] = useState("");
+  const [bulkOrigin, setBulkOrigin] = useState("");
+  const [bulkTemperature, setBulkTemperature] = useState("");
 
   const [lossLead, setLossLead] = useState<Lead | null>(null);
   const [lossReason, setLossReason] = useState("");
@@ -127,6 +134,44 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     return comparison * (sortDirection === "asc" ? 1 : -1);
   }), [filtered, sortBy, sortDirection, pipelines]);
   const toggleSort = (field: typeof sortBy) => { if (sortBy === field) setSortDirection(current => current === "asc" ? "desc" : "asc"); else { setSortBy(field); setSortDirection(field === "temperatura" ? "desc" : "asc"); } };
+
+  const visibleLeadIds = sortedLeads.map(lead => lead.id);
+  const selectedVisibleCount = visibleLeadIds.filter(id => selectedLeadIds.has(id)).length;
+  const allVisibleSelected = visibleLeadIds.length > 0 && selectedVisibleCount === visibleLeadIds.length;
+  const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
+  const selectedCount = selectedLeadIds.size;
+  const toggleLeadSelection = (id: string, checked: boolean) => setSelectedLeadIds(current => {
+    const next = new Set(current);
+    if (checked) next.add(id); else next.delete(id);
+    return next;
+  });
+  const toggleVisibleSelection = (checked: boolean) => setSelectedLeadIds(current => {
+    const next = new Set(current);
+    visibleLeadIds.forEach(id => checked ? next.add(id) : next.delete(id));
+    return next;
+  });
+  const clearSelection = () => setSelectedLeadIds(new Set());
+  const applyBulkUpdate = (patch: Partial<Lead>, message: string) => {
+    if (!selectedCount) return;
+    setLeads(prev => prev.map(lead => selectedLeadIds.has(lead.id) ? { ...lead, ...patch } : lead));
+    clearSelection();
+    toast.success(message);
+  };
+  const applyBulkStage = () => {
+    if (!bulkStage || !selectedCount) return;
+    setLeads(prev => prev.map(lead => selectedLeadIds.has(lead.id) ? changeStage(lead, bulkStage as Etapa) : lead));
+    setBulkStage("");
+    clearSelection();
+    toast.success(`Etapa atualizada para ${bulkStage}`);
+  };
+  const applyBulkDelete = () => {
+    if (!selectedCount || !confirm(`Excluir ${selectedCount} lead(s) selecionado(s)? Esta ação não pode ser desfeita.`)) return;
+    const ids = new Set(selectedLeadIds);
+    setLeads(prev => prev.filter(lead => !ids.has(lead.id)));
+    setTasks(prev => prev.filter(task => !ids.has(task.lead_id)));
+    clearSelection();
+    toast.success(`${ids.size} lead(s) excluído(s)`);
+  };
 
   const productOptions = [...new Set([...(config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome), ...leads.map(l => l.produto)])];
   const originOptions = [...new Set([...(config.origens ?? []), ...leads.map(l => l.origem)])];
@@ -219,6 +264,26 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
       </Card>
 
       {filtered.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lead ainda — cadastre o primeiro</p>}
+      {view === "lista" && selectedCount > 0 && <Card className="p-3 border-primary/30 bg-primary/5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="font-medium text-sm">{selectedCount} lead(s) selecionado(s)</div>
+          <div className="flex items-center gap-2"><Button size="sm" variant="ghost" onClick={clearSelection}>Limpar seleção</Button><Button size="sm" variant="destructive" onClick={applyBulkDelete}><Trash2 className="h-4 w-4 mr-1" />Excluir selecionados</Button></div>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[170px] flex-1 space-y-1"><label className="text-xs text-muted-foreground">Mover para pipeline</label><Select value={bulkPipeline} onValueChange={setBulkPipeline}><SelectTrigger><SelectValue placeholder="Selecionar pipeline" /></SelectTrigger><SelectContent>{pipelines.filter(p => !p.arquivada).map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select></div>
+          <Button size="sm" variant="outline" disabled={!bulkPipeline} onClick={() => { applyBulkUpdate({ pipeline_id: bulkPipeline }, "Leads movidos para outra pipeline"); setBulkPipeline(""); }}>Aplicar</Button>
+          <div className="min-w-[150px] flex-1 space-y-1"><label className="text-xs text-muted-foreground">Alterar etapa</label><Select value={bulkStage} onValueChange={setBulkStage}><SelectTrigger><SelectValue placeholder="Selecionar etapa" /></SelectTrigger><SelectContent>{stages.filter(stage => stage !== "Perdido").map(stage => <SelectItem key={stage} value={stage}>{stage}</SelectItem>)}</SelectContent></Select></div>
+          <Button size="sm" variant="outline" disabled={!bulkStage} onClick={applyBulkStage}>Aplicar</Button>
+          <div className="min-w-[130px] flex-1 space-y-1"><label className="text-xs text-muted-foreground">Alterar produto</label><Select value={bulkProduct} onValueChange={setBulkProduct}><SelectTrigger><SelectValue placeholder="Selecionar produto" /></SelectTrigger><SelectContent>{productOptions.map(product => <SelectItem key={product} value={product}>{product}</SelectItem>)}</SelectContent></Select></div>
+          <Button size="sm" variant="outline" disabled={!bulkProduct} onClick={() => { applyBulkUpdate({ produto: bulkProduct }, "Produto atualizado nos leads selecionados"); setBulkProduct(""); }}>Aplicar</Button>
+          <div className="min-w-[130px] flex-1 space-y-1"><label className="text-xs text-muted-foreground">Alterar origem</label><Select value={bulkOrigin} onValueChange={setBulkOrigin}><SelectTrigger><SelectValue placeholder="Selecionar origem" /></SelectTrigger><SelectContent>{originOptions.map(origin => <SelectItem key={origin} value={origin}>{origin}</SelectItem>)}</SelectContent></Select></div>
+          <Button size="sm" variant="outline" disabled={!bulkOrigin} onClick={() => { applyBulkUpdate({ origem: bulkOrigin }, "Origem atualizada nos leads selecionados"); setBulkOrigin(""); }}>Aplicar</Button>
+          <div className="min-w-[130px] flex-1 space-y-1"><label className="text-xs text-muted-foreground">Temperatura</label><Select value={bulkTemperature} onValueChange={setBulkTemperature}><SelectTrigger><SelectValue placeholder="Selecionar temperatura" /></SelectTrigger><SelectContent><SelectItem value="Frio">Frio</SelectItem><SelectItem value="Morno">Morno</SelectItem><SelectItem value="Quente">Quente</SelectItem></SelectContent></Select></div>
+          <Button size="sm" variant="outline" disabled={!bulkTemperature} onClick={() => { const temperature = bulkTemperature as "Frio" | "Morno" | "Quente"; setLeads(prev => prev.map(lead => selectedLeadIds.has(lead.id) ? { ...lead, detalhesCliente: { ...lead.detalhesCliente, temperatura } } : lead)); clearSelection(); setBulkTemperature(""); toast.success("Temperatura atualizada nos leads selecionados"); }}>Aplicar</Button>
+        </div>
+        <p className="text-xs text-muted-foreground">A seleção considera os leads marcados, mesmo que você altere os filtros. Para marcar todos os resultados atuais, use a caixa no cabeçalho da tabela. A etapa “Perdido” continua exigindo motivo e deve ser aplicada individualmente.</p>
+      </Card>}
+
       {view === "kanban" ? (
         <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
           <div className="flex gap-3 overflow-x-auto pb-4">
@@ -240,6 +305,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10"><Checkbox aria-label="Selecionar todos os leads exibidos" checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false} onCheckedChange={value => toggleVisibleSelection(value === true)} /></TableHead>
                 <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("nome")}>Nome<span aria-hidden="true">{sortBy === "nome" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
                 <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("pipeline")}>Pipeline<span aria-hidden="true">{sortBy === "pipeline" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
                 <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("produto")}>Produto<span aria-hidden="true">{sortBy === "produto" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
@@ -252,9 +318,10 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum lead encontrado</TableCell></TableRow>}
+              {filtered.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">Nenhum lead encontrado</TableCell></TableRow>}
               {sortedLeads.map((l) => (
-                <TableRow key={l.id}>
+                <TableRow key={l.id} data-state={selectedLeadIds.has(l.id) ? "selected" : undefined}>
+                  <TableCell><Checkbox aria-label={`Selecionar ${l.nome}`} checked={selectedLeadIds.has(l.id)} onCheckedChange={value => toggleLeadSelection(l.id, value === true)} /></TableCell>
                   <TableCell className="font-medium">{l.nome}</TableCell>
                   <TableCell><PipelineBadge pipeline={pipelines.find(p=>p.id===l.pipeline_id)} /></TableCell>
                   <TableCell><span className={`text-xs px-2 py-0.5 rounded border ${produtoColor[l.produto] ?? "bg-muted text-muted-foreground border-border"}`}>{l.produto}</span></TableCell>
