@@ -41,8 +41,8 @@ function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPi
     "bg-accent border-border";
 
   return (
-    <div className="flex flex-col w-72 shrink-0">
-      <div className={`rounded-t-lg border px-3 py-2 ${headerColor}`}>
+    <div className="kanban-column flex flex-col w-72 shrink-0">
+      <div className={`kanban-column-header rounded-t-lg border px-3 py-2 ${headerColor}`}>
         <div className="flex items-center justify-between">
           <span className="font-semibold text-sm">{etapa}</span>
           <span className="text-xs bg-background/80 rounded-full px-2 py-0.5 font-medium">{leads.length}</span>
@@ -52,7 +52,7 @@ function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPi
       <div
         ref={setNodeRef}
         data-kanban-pan-area="true"
-        className={`flex-1 min-h-[200px] bg-muted/40 border border-t-0 border-border rounded-b-lg p-2 space-y-2 ${isOver ? "bg-accent" : ""}`}
+        className={`kanban-column-body flex-1 min-h-[200px] bg-muted/40 border border-t-0 border-border rounded-b-lg p-2 space-y-2 ${isOver ? "bg-accent" : ""}`}
       >
         <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map((l) => <LeadCard key={l.id} lead={l} onEdit={onEdit} onAdvance={onAdvance} onTransfer={onTransfer} pipeline={pipelines.find(p=>p.id===l.pipeline_id)} showPipeline={showPipeline} />)}
