@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent, UIEvent } from "react";
 import { toast } from "sonner";
 import { DndContext, pointerWithin, type DragEndEvent, PointerSensor, useSensor, useSensors, useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -145,14 +146,14 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     };
   }, [view, filtered.length, stages.length]);
 
-  const handleKanbanScrollbar = (event: React.UIEvent<HTMLDivElement>) => {
+  const handleKanbanScrollbar = (event: UIEvent<HTMLDivElement>) => {
     const viewport = kanbanViewportRef.current;
     if (viewport && Math.abs(viewport.scrollLeft - event.currentTarget.scrollLeft) > 1) {
       viewport.scrollLeft = event.currentTarget.scrollLeft;
     }
   };
 
-  const startKanbanPan = (event: React.PointerEvent<HTMLDivElement>) => {
+  const startKanbanPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     const target = event.target as HTMLElement;
     if (!target.closest("[data-kanban-pan-area]")) return;
@@ -396,7 +397,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
               onPointerMove={moveKanbanPan}
               onPointerUp={stopKanbanPan}
               onPointerCancel={stopKanbanPan}
-              className={`overflow-x-auto overflow-y-hidden pb-4 touch-pan-y select-none ${isPanning ? "cursor-grabbing" : "cursor-grab"}`}
+              className={`overflow-x-auto overflow-y-hidden pb-8 touch-pan-y ${isPanning ? "cursor-grabbing select-none" : "cursor-grab"}`}
               aria-label="Quadros do Kanban. Arraste para os lados para navegar."
             >
               <div ref={kanbanContentRef} className="flex w-max gap-3">
