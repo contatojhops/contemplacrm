@@ -146,6 +146,11 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     };
   }, [view, filtered.length, stages.length]);
 
+  useEffect(() => {
+    const scrollbar = kanbanScrollbarRef.current;
+    if (scrollbar) scrollbar.scrollLeft = kanbanMetrics.scrollLeft;
+  }, [kanbanVisible, kanbanMetrics.scrollLeft]);
+
   const handleKanbanScrollbar = (event: UIEvent<HTMLDivElement>) => {
     const viewport = kanbanViewportRef.current;
     if (viewport && Math.abs(viewport.scrollLeft - event.currentTarget.scrollLeft) > 1) {
