@@ -317,10 +317,6 @@ function ClienteProfilePage() {
                   <h3 className="font-semibold text-sm">Histórico de etapas</h3>
                   {(baseLead.historicoEtapas ?? []).slice().reverse().map(item => <div key={item.id} className="rounded-md border border-border p-2 text-xs"><div className="text-muted-foreground">{new Date(item.data).toLocaleString("pt-BR")}</div><div>{item.etapaAnterior} → {item.etapaNova}</div><div className="text-muted-foreground">{item.atividadeRegistrada ? "Próxima atividade registrada" : "Sem atividade registrada"}</div></div>)}
                 </div>}
-                {fromLead && (cliente.historicoAtualizacoes ?? []).length > 0 && <div className="space-y-2">
-                  <h3 className="font-semibold text-sm">Atualizações da negociação</h3>
-                  {(cliente.historicoAtualizacoes ?? []).slice().reverse().map(item => <div key={item.id} className="rounded-md border border-border p-2 text-xs"><div className="text-muted-foreground">{new Date(item.data).toLocaleString("pt-BR")}</div>{item.texto}</div>)}
-                </div>}
                 <div className="relative pl-6 space-y-4 border-l border-border">
                   {(cliente.interacoes ?? []).length === 0 && <p className="text-sm text-muted-foreground">Nenhuma interação registrada</p>}
                   {(cliente.interacoes ?? []).slice().reverse().map((i) => (
