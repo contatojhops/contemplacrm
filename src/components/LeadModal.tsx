@@ -35,19 +35,32 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   });
 
   useEffect(() => {
-    if (open) setForm(initial ?? {
-      pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
-      etapa: defaultStage,
-      nome: "", telefone: "", email: "",
-      produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel",
-      valorCarta: 0,
-      origem: config.origens?.[0] ?? "WhatsApp",
-      perfil: "", observacoes: "",
-    });
+    if (open) {
+      const existingHistory = initial?.detalhesCliente?.historicoAtualizacoes ?? [];
+      const legacyUpdate = initial?.detalhesCliente?.atualizacoes?.trim();
+      const history = legacyUpdate && !existingHistory.some(item => item.texto === legacyUpdate)
+        ? [...existingHistory, { id: crypto.randomUUID(), texto: legacyUpdate, data: "" }]
+        : existingHistory;
+      setForm(initial ? { ...initial, detalhesCliente: { ...initial.detalhesCliente, atualizacoes: "", historicoAtualizacoes: history } } : {
+        pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
+        etapa: defaultStage,
+        nome: "", telefone: "", email: "",
+        produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel",
+        valorCarta: 0,
+        origem: config.origens?.[0] ?? "WhatsApp",
+        perfil: "", observacoes: "",
+      });
+    }
   }, [open, initial, defaultPipelineId, pipelines, config.produtosAtivos, config.origens, defaultStage]);
 
   const update = (patch: Partial<Lead>) => setForm((f) => ({ ...f, ...patch }));
   const updateCommercial = (patch: Partial<NonNullable<Lead["detalhesCliente"]>>) => setForm(f => ({ ...f, detalhesCliente: { ...f.detalhesCliente, ...patch } }));
+  const registerUpdate = () => {
+    const text = form.detalhesCliente?.atualizacoes?.trim() ?? "";
+    if (!text) { toast.error("Escreva uma atualização antes de registrar."); return; }
+    updateCommercial({ atualizacoes: "", historicoAtualizacoes: [...(form.detalhesCliente?.historicoAtualizacoes ?? []), { id: crypto.randomUUID(), texto: text, data: new Date().toISOString() }] });
+    toast.success("Atualização registrada no histórico.");
+  };
 
   const submit = () => {
     if (!form.nome?.trim() || !form.telefone?.trim()) { toast.error("Preencha nome e telefone."); return; }
@@ -86,13 +99,8 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
         objetivo: form.detalhesCliente?.objetivo,
         capacidadeMensal: form.detalhesCliente?.capacidadeMensal,
         temperatura: form.detalhesCliente?.temperatura,
-        atualizacoes: form.detalhesCliente?.atualizacoes,
-        historicoAtualizacoes: (() => {
-          const previous = initial?.detalhesCliente?.historicoAtualizacoes ?? [];
-          const current = form.detalhesCliente?.atualizacoes?.trim() ?? "";
-          if (!current || current === (initial?.detalhesCliente?.atualizacoes ?? "").trim()) return previous;
-          return [...previous, { id: crypto.randomUUID(), texto: current, data: now }];
-        })(),
+        atualizacoes: "",
+        historicoAtualizacoes: form.detalhesCliente?.historicoAtualizacoes ?? initial?.detalhesCliente?.historicoAtualizacoes ?? [],
       },
     };
     onSave(lead);
@@ -168,8 +176,13 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
           <div className="col-span-2">
             <Label>Atualizações da negociação</Label>
             <Textarea rows={3} placeholder="Registre uma nova atualização da negociação..." value={form.detalhesCliente?.atualizacoes ?? ""} onChange={(e) => updateCommercial({ atualizacoes: e.target.value })} />
-            <p className="text-xs text-muted-foreground mt-1">Ao salvar, a atualização será registrada com data e horário, preservando as anteriores.</p>
-            {(form.detalhesCliente?.historicoAtualizacoes ?? []).length > 0 && <div className="space-y-2 mt-2">{(form.detalhesCliente?.historicoAtualizacoes ?? []).slice().reverse().map(item => <div key={item.id} className="rounded-md border border-border p-2 text-xs"><div className="text-muted-foreground mb-1">{new Date(item.data).toLocaleString("pt-BR")}</div>{item.texto}</div>)}</div>}
+            <div className="mt-2 flex justify-end">
+              <Button type="button" size="sm" variant="secondary" onClick={registerUpdate}>Registrar atualização</Button>
+            </div>
+            {(form.detalhesCliente?.historicoAtualizacoes ?? []).length > 0 && <section className="space-y-2 mt-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Histórico</h4>
+              {(form.detalhesCliente?.historicoAtualizacoes ?? []).slice().reverse().map(item => <div key={item.id} className="rounded-md border border-border p-2 text-xs"><div className="text-muted-foreground mb-1">{item.data ? new Date(item.data).toLocaleString("pt-BR") : "Data não disponível (registro anterior)"}</div>{item.texto}</div>)}
+            </section>}
           </div>
         </div>
         <DialogFooter className="shrink-0 border-t pt-3">
