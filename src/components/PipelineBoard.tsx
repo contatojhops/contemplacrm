@@ -174,14 +174,14 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     setIsPanning(true);
   };
 
-  const moveKanbanPan = (event: React.PointerEvent<HTMLDivElement>) => {
+  const moveKanbanPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     const pan = panRef.current;
     const viewport = kanbanViewportRef.current;
     if (!pan || !viewport || pan.pointerId !== event.pointerId) return;
     viewport.scrollLeft = pan.startScrollLeft - (event.clientX - pan.startX);
   };
 
-  const stopKanbanPan = (event: React.PointerEvent<HTMLDivElement>) => {
+  const stopKanbanPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (panRef.current?.pointerId !== event.pointerId) return;
     panRef.current = null;
     setIsPanning(false);
