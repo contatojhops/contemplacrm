@@ -148,7 +148,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     const viewport = kanbanViewportRef.current;
     if (!viewport) return;
     viewport.scrollBy({
-      left: (direction === "right" ? 1 : -1) * viewport.clientWidth * 0.72,
+      left: (direction === "right" ? 1 : -1) * viewport.clientWidth,
       behavior: "smooth",
     });
   };
