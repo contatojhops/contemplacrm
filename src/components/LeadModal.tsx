@@ -58,6 +58,9 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
     const lead: Lead = {
       ...initial,
       stage_changed_at: initial && form.etapa !== initial.etapa ? now : initial?.stage_changed_at ?? now,
+      historicoEtapas: initial && form.etapa !== initial.etapa
+        ? [...(initial.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: initial.etapa, etapaNova: form.etapa, data: now, atividadeRegistrada: false }]
+        : initial?.historicoEtapas ?? [],
       pipeline_id: form.pipeline_id,
       id: initial?.id ?? crypto.randomUUID(),
       nome: form.nome.trim(),
