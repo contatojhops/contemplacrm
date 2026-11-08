@@ -14,13 +14,28 @@ export function deletePipeline(pipelines: Pipeline[], leads: Lead[], tasks: Tare
   const removedIds = new Set(leads.filter(l => l.pipeline_id === id).map(l => l.id));
   return { pipelines: pipelines.filter(p => p.id !== id), leads: target ? leads.map(l => l.pipeline_id === id ? { ...l, pipeline_id: target } : l) : leads.filter(l => l.pipeline_id !== id), tasks: target ? tasks : tasks.filter(t => !removedIds.has(t.lead_id)) };
 }
-export type Period = 'mes' | '30dias' | 'todos';
-export function periodRange(period: Period, now = new Date()) {
+export type Period = 'mes' | '7dias' | '30dias' | 'semana' | 'todos' | 'personalizado';
+export function periodRange(period: Period, now = new Date(), customStart?: string, customEnd?: string) {
   const end = new Date(now); end.setHours(23,59,59,999);
   if (period === 'todos') return { start: new Date(0), end, previousStart: new Date(0), previousEnd: new Date(0) };
-  const start = period === 'mes' ? new Date(now.getFullYear(), now.getMonth(), 1) : new Date(now.getFullYear(), now.getMonth(), now.getDate()-29);
+  let start: Date;
+  if (period === 'mes') start = new Date(now.getFullYear(), now.getMonth(), 1);
+  else if (period === 'semana') { start = new Date(now); start.setHours(0,0,0,0); start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); }
+  else if (period === 'personalizado') {
+    const parsedStart = customStart ? new Date(`${customStart}T00:00:00`) : new Date(NaN);
+    const parsedEnd = customEnd ? new Date(`${customEnd}T23:59:59.999`) : new Date(NaN);
+    if (Number.isNaN(parsedStart.getTime()) || Number.isNaN(parsedEnd.getTime()) || parsedStart > parsedEnd) return { start: new Date(now.getTime()+86400000), end, previousStart: new Date(now.getTime()+86400000), previousEnd: end };
+    const duration = parsedEnd.getTime() - parsedStart.getTime() + 1;
+    const previousEnd = new Date(parsedStart.getTime()-1);
+    return { start: parsedStart, end: parsedEnd, previousStart: new Date(previousEnd.getTime()-duration+1), previousEnd };
+  } else {
+    const days = period === '7dias' ? 6 : 29;
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate()-days);
+  }
+  start.setHours(0,0,0,0);
   const previousEnd = new Date(start.getTime()-1);
-  const previousStart = period === 'mes' ? new Date(now.getFullYear(), now.getMonth()-1, 1) : new Date(start.getTime()-30*86400000);
+  const duration = end.getTime() - start.getTime() + 1;
+  const previousStart = period === 'mes' ? new Date(now.getFullYear(), now.getMonth()-1, 1) : new Date(previousEnd.getTime()-duration+1);
   return { start, end, previousStart, previousEnd };
 }
 export function inRange(date: string | undefined, start: Date, end: Date) { if (!date) return false; const d = localDate(date); return d >= start && d <= end; }

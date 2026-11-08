@@ -66,6 +66,12 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const [,setTasks] = useTarefas();
   const pipeline = pipelines.find(p => p.id === pipelineId);
   const [period,setPeriod] = useState<Period>("todos");
+  const [customStart,setCustomStart] = useState("");
+  const [customEnd,setCustomEnd] = useState("");
+  const [filterTemperatura,setFilterTemperatura] = useState("all");
+  const [filterPipeline,setFilterPipeline] = useState("all");
+  const [sortBy,setSortBy] = useState<"nome"|"pipeline"|"produto"|"origem"|"etapa"|"temperatura"|"followUp"|"valor">("nome");
+  const [sortDirection,setSortDirection] = useState<"asc"|"desc">("asc");
   const [transfer,setTransfer] = useState<Lead|null>(null);
   const [destination,setDestination] = useState("");
   const [leads, setLeads] = useLeads();
@@ -97,14 +103,30 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
 
   const filtered = useMemo(() => leads.filter((l) => {
     if (pipelineId && l.pipeline_id !== pipelineId) return false;
-    const range = periodRange(period);
+    const range = periodRange(period, new Date(), customStart, customEnd);
     if (!inRange(l.criadoEm,range.start,range.end)) return false;
     if (search && !l.nome.toLowerCase().includes(search.toLowerCase()) && !l.telefone.includes(search)) return false;
     if (filterProduto !== "all" && l.produto !== filterProduto) return false;
     if (filterOrigem !== "all" && l.origem !== filterOrigem) return false;
     if (filterEtapa !== "all" && l.etapa !== filterEtapa) return false;
+    if (filterTemperatura !== "all" && (l.detalhesCliente?.temperatura ?? "Morno") !== filterTemperatura) return false;
+    if (filterPipeline !== "all" && l.pipeline_id !== filterPipeline) return false;
     return true;
-  }), [leads, search, filterProduto, filterOrigem, filterEtapa, pipelineId, period]);
+  }), [leads, search, filterProduto, filterOrigem, filterEtapa, filterTemperatura, filterPipeline, pipelineId, period, customStart, customEnd]);
+
+  const sortedLeads = useMemo(() => [...filtered].sort((a,b) => {
+    const rank = (value?: string) => value === "Quente" ? 3 : value === "Frio" ? 1 : 2;
+    let comparison = 0;
+    if (sortBy === "temperatura") comparison = rank(a.detalhesCliente?.temperatura) - rank(b.detalhesCliente?.temperatura);
+    else if (sortBy === "followUp") comparison = (a.proximoFollowUp ? localDate(a.proximoFollowUp).getTime() : 0) - (b.proximoFollowUp ? localDate(b.proximoFollowUp).getTime() : 0);
+    else if (sortBy === "valor") comparison = a.valorCarta - b.valorCarta;
+    else {
+      const value = (lead: Lead) => sortBy === "pipeline" ? pipelines.find(p=>p.id===lead.pipeline_id)?.nome ?? "" : sortBy === "produto" ? lead.produto : sortBy === "origem" ? lead.origem : sortBy === "etapa" ? lead.etapa : lead.nome;
+      comparison = value(a).localeCompare(value(b), "pt-BR", { sensitivity: "base" });
+    }
+    return comparison * (sortDirection === "asc" ? 1 : -1);
+  }), [filtered, sortBy, sortDirection, pipelines]);
+  const toggleSort = (field: typeof sortBy) => { if (sortBy === field) setSortDirection(current => current === "asc" ? "desc" : "asc"); else { setSortBy(field); setSortDirection(field === "temperatura" ? "desc" : "asc"); } };
 
   const productOptions = [...new Set([...(config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome), ...leads.map(l => l.produto)])];
   const originOptions = [...new Set([...(config.origens ?? []), ...leads.map(l => l.origem)])];
@@ -160,7 +182,8 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Buscar por nome ou telefone" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <Select value={period} onValueChange={v=>setPeriod(v as Period)}><SelectTrigger aria-label="Período dos leads" className="w-[160px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todo o período</SelectItem><SelectItem value="mes">Mês atual</SelectItem><SelectItem value="30dias">Últimos 30 dias</SelectItem></SelectContent></Select>
+          <Select value={period} onValueChange={v=>setPeriod(v as Period)}><SelectTrigger aria-label="Período dos leads" className="w-[170px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todo o período</SelectItem><SelectItem value="mes">Mês atual</SelectItem><SelectItem value="7dias">Últimos 7 dias</SelectItem><SelectItem value="30dias">Últimos 30 dias</SelectItem><SelectItem value="semana">Semana atual</SelectItem><SelectItem value="personalizado">Personalizado</SelectItem></SelectContent></Select>
+          {period === "personalizado" && <><Input aria-label="Data inicial do período" type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} className="w-[155px]" /><Input aria-label="Data final do período" type="date" min={customStart || undefined} value={customEnd} onChange={e=>setCustomEnd(e.target.value)} className="w-[155px]" /></>}
           <Select value={filterProduto} onValueChange={setFilterProduto}>
             <SelectTrigger className="w-[140px]"><SelectValue placeholder="Produto" /></SelectTrigger>
             <SelectContent>
@@ -175,6 +198,8 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
               {originOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={filterTemperatura} onValueChange={setFilterTemperatura}><SelectTrigger className="w-[150px]"><SelectValue placeholder="Temperatura" /></SelectTrigger><SelectContent><SelectItem value="all">Todas temperaturas</SelectItem><SelectItem value="Quente">Quente</SelectItem><SelectItem value="Morno">Morno</SelectItem><SelectItem value="Frio">Frio</SelectItem></SelectContent></Select>
+          <Select value={filterPipeline} onValueChange={setFilterPipeline}><SelectTrigger className="w-[150px]"><SelectValue placeholder="Pipeline" /></SelectTrigger><SelectContent><SelectItem value="all">Todas pipelines</SelectItem>{pipelines.filter(p=>!p.arquivada).map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select>
           <Select value={filterEtapa} onValueChange={setFilterEtapa}>
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="Etapa" /></SelectTrigger>
             <SelectContent>
@@ -215,20 +240,20 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Pipeline</TableHead>
-                <TableHead>Produto</TableHead>
-                <TableHead>Origem</TableHead>
-                <TableHead>Etapa</TableHead>
-                <TableHead>Temperatura</TableHead>
-                <TableHead>Próximo Follow-up</TableHead>
-                <TableHead>Valor Carta</TableHead>
+                <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("nome")}>Nome<span aria-hidden="true">{sortBy === "nome" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
+                <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("pipeline")}>Pipeline<span aria-hidden="true">{sortBy === "pipeline" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
+                <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("produto")}>Produto<span aria-hidden="true">{sortBy === "produto" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
+                <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("origem")}>Origem<span aria-hidden="true">{sortBy === "origem" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
+                <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("etapa")}>Etapa<span aria-hidden="true">{sortBy === "etapa" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
+                <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("temperatura")}>Temperatura<span aria-hidden="true">{sortBy === "temperatura" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
+                <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("followUp")}>Próximo Follow-up<span aria-hidden="true">{sortBy === "followUp" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
+                <TableHead><button type="button" className="inline-flex items-center gap-1 hover:text-primary" onClick={() => toggleSort("valor")}>Valor Carta<span aria-hidden="true">{sortBy === "valor" ? (sortDirection === "asc" ? "↑" : "↓") : "↕"}</span></button></TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum lead encontrado</TableCell></TableRow>}
-              {filtered.map((l) => (
+              {sortedLeads.map((l) => (
                 <TableRow key={l.id}>
                   <TableCell className="font-medium">{l.nome}</TableCell>
                   <TableCell><PipelineBadge pipeline={pipelines.find(p=>p.id===l.pipeline_id)} /></TableCell>
