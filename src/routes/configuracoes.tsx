@@ -112,20 +112,20 @@ function ConfigPage() {
   };
 
   return (
-    <div className="p-6 space-y-4 max-w-5xl">
+    <div className="w-full p-6 space-y-4">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground">Personalize seu CRM por área.</p>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-2 border-b"><Button key="perfil" size="sm" variant={activeSection === "perfil" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("perfil")}>Perfil do Consultor</Button>
-        <Button key="simulador" size="sm" variant={activeSection === "simulador" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("simulador")}>Configurações do Simulador por Produto</Button>
-        <Button key="dados" size="sm" variant={activeSection === "dados" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("dados")}>Dados</Button>
-        <Button key="etapas" size="sm" variant={activeSection === "etapas" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("etapas")}>Pipeline — Etapas</Button>
-        <Button key="produtos" size="sm" variant={activeSection === "produtos" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("produtos")}>Produtos</Button>
-        <Button key="origens" size="sm" variant={activeSection === "origens" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("origens")}>Origens de Lead</Button>
-        <Button key="tags" size="sm" variant={activeSection === "tags" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("tags")}>Tags Customizáveis</Button>
-        <Button key="templates" size="sm" variant={activeSection === "templates" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("templates")}>Templates de Mensagem</Button>
-        <Button key="aparencia" size="sm" variant={activeSection === "aparencia" ? "default" : "outline"} className="shrink-0" onClick={() => selectSection("aparencia")}>Aparência</Button></div>
+      <div className="flex w-full flex-wrap gap-2 pb-3 border-b"><Button key="perfil" size="sm" variant={activeSection === "perfil" ? "default" : "outline"} className="flex-1 min-w-[160px] justify-center whitespace-normal" onClick={() => selectSection("perfil")}>Perfil do Consultor</Button>
+        <Button key="simulador" size="sm" variant={activeSection === "simulador" ? "default" : "outline"} className="flex-1 min-w-[160px] justify-center whitespace-normal" onClick={() => selectSection("simulador")}>Configurações do Simulador por Produto</Button>
+        <Button key="dados" size="sm" variant={activeSection === "dados" ? "default" : "outline"} className="flex-1 min-w-[160px] justify-center whitespace-normal" onClick={() => selectSection("dados")}>Dados</Button>
+        <Button key="etapas" size="sm" variant={activeSection === "etapas" ? "default" : "outline"} className="flex-1 min-w-[160px] justify-center whitespace-normal" onClick={() => selectSection("etapas")}>Pipeline — Etapas</Button>
+        <Button key="produtos" size="sm" variant={activeSection === "produtos" ? "default" : "outline"} className="flex-1 min-w-[160px] justify-center whitespace-normal" onClick={() => selectSection("produtos")}>Produtos</Button>
+        <Button key="origens" size="sm" variant={activeSection === "origens" ? "default" : "outline"} className="flex-1 min-w-[160px] justify-center whitespace-normal" onClick={() => selectSection("origens")}>Origens de Lead</Button>
+        <Button key="tags" size="sm" variant={activeSection === "tags" ? "default" : "outline"} className="flex-1 min-w-[160px] justify-center whitespace-normal" onClick={() => selectSection("tags")}>Tags Customizáveis</Button>
+        <Button key="templates" size="sm" variant={activeSection === "templates" ? "default" : "outline"} className="flex-1 min-w-[160px] justify-center whitespace-normal" onClick={() => selectSection("templates")}>Templates de Mensagem</Button>
+        <Button key="aparencia" size="sm" variant={activeSection === "aparencia" ? "default" : "outline"} className="flex-1 min-w-[160px] justify-center whitespace-normal" onClick={() => selectSection("aparencia")}>Aparência</Button></div>
       <div>
         <h2 className="text-xl font-semibold">{activeSection === "perfil" ? "Perfil do Consultor" : activeSection === "simulador" ? "Configurações do Simulador por Produto" : activeSection === "dados" ? "Dados" : activeSection === "etapas" ? "Pipeline — Etapas" : activeSection === "produtos" ? "Produtos" : activeSection === "origens" ? "Origens de Lead" : activeSection === "tags" ? "Tags Customizáveis" : activeSection === "templates" ? "Templates de Mensagem" : activeSection === "aparencia" ? "Aparência" : "Configurações"}</h2>
         <p className="text-sm text-muted-foreground">{activeSection === "perfil" ? "Dados pessoais, contato e metas." : activeSection === "simulador" ? "Taxas, comissão e seguro para cada produto." : activeSection === "dados" ? "Importação, exportação e restauração de backups." : activeSection === "etapas" ? "Organize as etapas da jornada comercial." : activeSection === "produtos" ? "Gerencie os produtos disponíveis no CRM." : activeSection === "origens" ? "Organize de onde vêm seus leads." : activeSection === "tags" ? "Crie etiquetas para classificar seus contatos." : activeSection === "templates" ? "Gerencie mensagens prontas para seus contatos." : activeSection === "aparencia" ? "Personalize a experiência visual do CRM." : "Selecione uma área para configurar."}</p>
