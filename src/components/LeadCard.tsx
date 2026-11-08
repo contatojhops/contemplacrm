@@ -66,11 +66,6 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
           {lead.detalhesCliente?.capacidadeMensal != null && <div><span className="rounded bg-muted px-1.5 py-0.5">Capacidade: {formatBRL(lead.detalhesCliente.capacidadeMensal)}/mês</span></div>}
         </div>
       )}
-      {lead.detalhesCliente?.atualizacoes?.trim() && (
-        <div className="rounded-md bg-muted/60 px-2 py-1.5 text-[11px] text-muted-foreground line-clamp-2">
-          <span className="font-medium text-foreground">Atualização:</span> {lead.detalhesCliente.atualizacoes}
-        </div>
-      )}
       <div className="space-y-0.5 text-[11px] text-muted-foreground"><div>Entrada: {localDate(lead.criadoEm).toLocaleDateString("pt-BR")}</div><div>{stageDays(lead)} dias nesta etapa</div></div>
       {lead.proximoFollowUp && (
         <div className="flex items-center gap-1 text-[11px] text-foreground">
