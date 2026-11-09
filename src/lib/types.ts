@@ -1,4 +1,9 @@
 export type Produto = string;
+export interface LeadProduto {
+  produto: Produto;
+  quantidade: number;
+  valorUnitario: number;
+}
 export type Origem = string;
 export type Etapa = string;
 
@@ -13,6 +18,7 @@ export interface Lead {
   email: string;
   produto: Produto;
   valorCarta: number;
+  produtos?: LeadProduto[];
   origem: Origem;
   etapa: Etapa;
   perfil?: string;
