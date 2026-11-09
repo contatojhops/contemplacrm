@@ -1,7 +1,7 @@
 import { usePipelines, useConfig } from "@/lib/store";
 import { GENERAL_ID } from "@/lib/pipelines";
 import { toast } from "sonner";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,8 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   const stages = (config.etapas ?? []).map(item => item.nome);
   const defaultStage = stages.find(stage => !["Fechado", "Perdido"].includes(stage)) ?? "Novo Lead";
   const stageOptions = initial ? stages : stages.filter(stage => !["Fechado", "Perdido"].includes(stage));
+  const draftKey = `contemplacrm:draft:lead:${initial?.id ?? `new:${defaultPipelineId ?? "default"}`}`;
+  const wasOpen = useRef(false);
   const [form, setForm] = useState<Partial<Lead>>(initial ?? {
     pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
     etapa: defaultStage,
@@ -36,32 +38,45 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   });
 
   useEffect(() => {
-    if (open) {
-      const existingHistory = initial?.detalhesCliente?.historicoAtualizacoes ?? [];
-      const legacyUpdate = initial?.detalhesCliente?.atualizacoes?.trim();
-      const history = legacyUpdate && !existingHistory.some(item => item.texto === legacyUpdate)
-        ? [...existingHistory, { id: crypto.randomUUID(), texto: legacyUpdate, data: "" }]
-        : existingHistory;
-      setForm(initial ? { ...initial, produtos: initial.produtos?.length ? initial.produtos : [{ produto: initial.produto, quantidade: 1, valorUnitario: initial.valorCarta }], detalhesCliente: { ...initial.detalhesCliente, atualizacoes: "", historicoAtualizacoes: history } } : {
-        pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
-        etapa: defaultStage,
-        nome: "", telefone: "", email: "",
-        produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel",
-        valorCarta: 0,
-        produtos: [{ produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel", quantidade: 1, valorUnitario: 0 }],
-        origem: config.origens?.[0] ?? "WhatsApp",
-        perfil: "", observacoes: "",
-      });
-    }
-  }, [open, initial, defaultPipelineId, pipelines, config.produtosAtivos, config.origens, defaultStage]);
+    if (open && !wasOpen.current) {
+      let restored: Partial<Lead> | null = null;
+      try {
+        const raw = sessionStorage.getItem(draftKey);
+        if (raw) restored = JSON.parse(raw) as Partial<Lead>;
+      } catch {
+        sessionStorage.removeItem(draftKey);
+      }
 
-  const update = (patch: Partial<Lead>) => setForm((f) => ({ ...f, ...patch }));
+      if (restored) {
+        setForm(restored);
+      } else {
+        const existingHistory = initial?.detalhesCliente?.historicoAtualizacoes ?? [];
+        const legacyUpdate = initial?.detalhesCliente?.atualizacoes?.trim();
+        const history = legacyUpdate && !existingHistory.some(item => item.texto === legacyUpdate)
+          ? [...existingHistory, { id: crypto.randomUUID(), texto: legacyUpdate, data: "" }]
+          : existingHistory;
+        setForm(initial ? { ...initial, produtos: initial.produtos?.length ? initial.produtos : [{ produto: initial.produto, quantidade: 1, valorUnitario: initial.valorCarta }], detalhesCliente: { ...initial.detalhesCliente, atualizacoes: "", historicoAtualizacoes: history } } : {
+          pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
+          etapa: defaultStage,
+          nome: "", telefone: "", email: "",
+          produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel",
+          valorCarta: 0,
+          produtos: [{ produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel", quantidade: 1, valorUnitario: 0 }],
+          origem: config.origens?.[0] ?? "WhatsApp",
+          perfil: "", observacoes: "",
+        });
+      }
+    }
+    wasOpen.current = open;
+  }, [open, draftKey]);
+
+  const update = (patch: Partial<Lead>) => setForm((f) => { const next = { ...f, ...patch }; try { sessionStorage.setItem(draftKey, JSON.stringify(next)); } catch { /* Keep editing even if storage is unavailable. */ } return next; });
   const productRows = form.produtos?.length ? form.produtos : [{ produto: form.produto ?? "Imóvel", quantidade: 1, valorUnitario: form.valorCarta ?? 0 }];
   const totalProdutos = useMemo(() => productRows.reduce((sum, item) => sum + Math.max(0, Number(item.quantidade) || 0) * Math.max(0, Number(item.valorUnitario) || 0), 0), [productRows]);
   const updateProduct = (index: number, patch: Partial<LeadProduto>) => update({ produtos: productRows.map((item, i) => i === index ? { ...item, ...patch } : item) });
   const addProduct = () => update({ produtos: [...productRows, { produto: produtos[0] ?? "Imóvel", quantidade: 1, valorUnitario: 0 }] });
   const removeProduct = (index: number) => update({ produtos: productRows.filter((_, i) => i !== index) });
-  const updateCommercial = (patch: Partial<NonNullable<Lead["detalhesCliente"]>>) => setForm(f => ({ ...f, detalhesCliente: { ...f.detalhesCliente, ...patch } }));
+  const updateCommercial = (patch: Partial<NonNullable<Lead["detalhesCliente"]>>) => setForm(f => { const next = { ...f, detalhesCliente: { ...f.detalhesCliente, ...patch } }; try { sessionStorage.setItem(draftKey, JSON.stringify(next)); } catch { /* Keep editing even if storage is unavailable. */ } return next; });
   const registerUpdate = () => {
     const text = form.detalhesCliente?.atualizacoes?.trim() ?? "";
     if (!text) { toast.error("Escreva uma atualização antes de registrar."); return; }
@@ -112,11 +127,19 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
       },
     };
     onSave(lead);
+    sessionStorage.removeItem(draftKey);
     onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen && sessionStorage.getItem(draftKey)) {
+        const discard = window.confirm("Deseja descartar o rascunho deste lead?");
+        if (!discard) return;
+        sessionStorage.removeItem(draftKey);
+      }
+      onOpenChange(nextOpen);
+    }}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>{initial ? "Editar Lead" : "Novo Lead"}</DialogTitle>
