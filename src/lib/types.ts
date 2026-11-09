@@ -245,7 +245,7 @@ export interface Configuracoes {
   valorSeguroDefault: number;
   simuladorProdutos?: { produto: string; taxaAdmin: number; fundoReserva: number; comissao: number; valorSeguro: number }[];
   etapas?: EtapaItem[];
-  produtosAtivos?: { nome: string; ativo: boolean }[];
+  produtosAtivos?: { nome: string; ativo: boolean; aliases?: string[] }[];
   origens?: string[];
   tags?: TagItem[];
   templates?: Template[];
