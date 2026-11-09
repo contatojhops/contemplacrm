@@ -54,11 +54,12 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
         <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${temperaturaClass[temperatura] ?? temperaturaClass.Morno}`}>{temperatura}</span>
       </div>
       {showPipeline && <PipelineBadge pipeline={pipeline} />}
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <span className={`text-[10px] px-1.5 py-0.5 rounded border ${produtoColor[lead.produto] ?? "bg-muted text-muted-foreground border-border"}`}>{lead.produto}</span>
+        {lead.origem && <span className="text-[10px] px-1.5 py-0.5 rounded border border-border bg-muted/50 text-muted-foreground">{lead.origem}</span>}
       </div>
       <div className="text-xs text-muted-foreground">
-        {lead.origem} · {formatBRL(lead.valorCarta)}
+        {formatBRL(lead.valorCarta)}
       </div>
       {(lead.detalhesCliente?.objetivo || lead.detalhesCliente?.capacidadeMensal != null) && (
         <div className="space-y-1 text-[11px]">
