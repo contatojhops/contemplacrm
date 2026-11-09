@@ -20,11 +20,26 @@ export const Route = createFileRoute("/configuracoes")({ head: () => pageHead("C
 
 function ConfigPage() {
   const [config, setConfig] = useConfig();
-  const [form, setForm] = useState(config);
+  const settingsDraftKey = "contemplacrm:draft:settings";
+  const [form, setFormState] = useState(config);
+  const setForm: typeof setFormState = (value) => setFormState(current => {
+    const next = typeof value === "function" ? value(current) : value;
+    try { sessionStorage.setItem(settingsDraftKey, JSON.stringify(next)); } catch { /* Keep settings editable if browser storage is unavailable. */ }
+    return next;
+  });
   const [leads, setLeads] = useLeads();
   const [clientes, setClientes] = useClientes();
   const [propostas, setPropostas] = usePropostas();
-  useEffect(() => setForm(config), [config]);
+  useEffect(() => {
+    let restored = config;
+    try {
+      const raw = sessionStorage.getItem(settingsDraftKey);
+      if (raw) restored = JSON.parse(raw);
+    } catch {
+      sessionStorage.removeItem(settingsDraftKey);
+    }
+    setFormState(restored);
+  }, [config]);
   const [novaEtapa, setNovaEtapa] = useState("");
   const [novoProduto, setNovoProduto] = useState("");
   const [novaOrigem, setNovaOrigem] = useState("");
@@ -80,6 +95,7 @@ function ConfigPage() {
       }
     }
     setConfig(nextForm);
+    sessionStorage.removeItem(settingsDraftKey);
     toast.success("Configurações salvas e aplicadas ao CRM!");
   };
 
