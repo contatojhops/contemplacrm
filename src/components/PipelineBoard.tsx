@@ -66,6 +66,11 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const [pipelines] = usePipelines();
   const [config] = useConfig();
   const stages = (config.etapas ?? []).map(item => item.nome);
+  const meetingStageIndex = stages.findIndex(stage => /reuni.*(agend|marcad)|agend.*reuni/i.test(stage));
+  const shouldSetHot = (target: Etapa) => {
+    const targetIndex = stages.indexOf(target);
+    return meetingStageIndex >= 0 && target !== "Perdido" && targetIndex >= meetingStageIndex;
+  };
   const [,setTasks] = useTarefas();
   const pipeline = pipelines.find(p => p.id === pipelineId);
   const [period,setPeriod] = useState<Period>("todos");
@@ -178,7 +183,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     const { lead, target } = pendingAdvance;
     if (!noActivity && (!nextDescription.trim() || !nextDateTime || !Number.isFinite(new Date(nextDateTime).getTime()))) { toast.error("Informe a descrição, data e horário da próxima atividade."); return; }
     const now = new Date().toISOString();
-    setLeads(prev => prev.map(item => item.id === lead.id ? { ...changeStage(item, target), historicoEtapas: [...(item.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: item.etapa, etapaNova: target, data: now, atividadeRegistrada: !noActivity }] } : item));
+    setLeads(prev => prev.map(item => { if (item.id !== lead.id) return item; const moved = changeStage(item, target); return { ...moved, ...(shouldSetHot(target) ? { detalhesCliente: { ...moved.detalhesCliente, temperatura: "Quente" as const } } : {}), historicoEtapas: [...(item.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: item.etapa, etapaNova: target, data: now, atividadeRegistrada: !noActivity }] }; }));
     if (!noActivity) {
       const taskId = crypto.randomUUID();
       const taskDate = new Date(nextDateTime).toISOString();
@@ -296,7 +301,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const applyBulkStage = () => {
     if (!bulkStage || !selectedCount) return;
     const now = new Date().toISOString();
-    setLeads(prev => prev.map(lead => selectedLeadIds.has(lead.id) ? { ...changeStage(lead, bulkStage as Etapa), historicoEtapas: [...(lead.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: lead.etapa, etapaNova: bulkStage, data: now, atividadeRegistrada: false }] } : lead));
+    setLeads(prev => prev.map(lead => { if (!selectedLeadIds.has(lead.id)) return lead; const target = bulkStage as Etapa; const moved = changeStage(lead, target); return { ...moved, ...(shouldSetHot(target) ? { detalhesCliente: { ...moved.detalhesCliente, temperatura: "Quente" as const } } : {}), historicoEtapas: [...(lead.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: lead.etapa, etapaNova: bulkStage, data: now, atividadeRegistrada: false }] }; }));
     setBulkStage("");
     clearSelection();
     toast.success(`Etapa atualizada para ${bulkStage}`);
