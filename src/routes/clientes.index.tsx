@@ -63,6 +63,7 @@ function ClientesPage() {
         parcelasTotais: 0,
         contemplado: false,
         produtos: l.produtos,
+        dataEntrada: l.criadoEm,
         fechadoEm: l.closed_at ?? l.stage_changed_at ?? "",
         fase: "Cliente Ativo",
         perfil: l.perfil as Cliente["perfil"],
@@ -155,6 +156,7 @@ function ClientesPage() {
               <TableHead>Fase</TableHead>
               <TableHead>Produto</TableHead>
               <TableHead>Perfil</TableHead>
+              <TableHead>Data de Entrada</TableHead>
               <TableHead>Data de Fechamento</TableHead>
               <TableHead>Valor Fechado</TableHead>
               <TableHead>Última Interação</TableHead>
@@ -162,7 +164,7 @@ function ClientesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum cliente encontrado</TableCell></TableRow>}
+            {filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum cliente encontrado</TableCell></TableRow>}
             {filtered.map((item) => {
               const produtosFechados = item.produtos?.length
                 ? item.produtos.map(product => product.produto + (product.quantidade > 1 ? " ×" + product.quantidade : "")).join(", ")
@@ -175,6 +177,7 @@ function ClientesPage() {
                   <TableCell><Badge className={faseColor(item.fase)}>{item.fase ?? "—"}</Badge></TableCell>
                   <TableCell>{produtosFechados || "—"}</TableCell>
                   <TableCell>{item.perfil ?? "—"}</TableCell>
+                  <TableCell>{item.dataEntrada ? localDate(item.dataEntrada).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell>{item.fechadoEm ? localDate(item.fechadoEm).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell className="font-medium whitespace-nowrap">{formatBRL(item.valorCarta)}</TableCell>
                   <TableCell>{item.lastContactDate ? localDate(item.lastContactDate).toLocaleDateString("pt-BR") : "—"}</TableCell>
