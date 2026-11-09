@@ -164,7 +164,7 @@ export interface Tarefa {
   proximaAcaoId?: string;
 }
 
-export type PipelineCor = "azul" | "verde" | "amarelo" | "vermelho" | "roxo";
+export type PipelineCor = "azul" | "verde" | "amarelo" | "vermelho" | "roxo" | "ciano" | "laranja" | "rosa" | "indigo" | "turquesa" | "esmeralda" | "cinza";
 export interface Pipeline {
   id: string;
   nome: string;
@@ -229,6 +229,7 @@ export interface TagItem {
 export interface EtapaItem {
   id: string;
   nome: string;
+  cor?: string;
   fixa?: boolean;
 }
 
