@@ -30,12 +30,57 @@ type ImportRow = {
   duplicateName?: string;
   duplicateKind?: "phone" | "email" | "both";
   action: "merge" | "replace" | "skip";
+  productNotes?: string[];
 };
 
 const TEMPLATE_HEADERS = ["Nome", "Telefone", "Email", "Produto", "Quantidade", "Valor do Produto", "Produto 2", "Quantidade 2", "Valor do Produto 2", "Origem", "Etapa", "Perfil", "Objetivo", "Capacidade mensal", "Temperatura", "Observações"];
 const normalizePhone = (value: string) => value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const normalizeText = (value: string) => value.trim().toLocaleLowerCase("pt-BR");
+const normalizeProductKey = (value: string) => value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]/g, "");
+const PRODUCT_SYNONYMS: Record<string, string[]> = {
+  imovel: ["imovel", "imoveis", "casa", "casas", "apartamento", "apartamentos", "apto", "aptos"],
+  veiculo: ["veiculo", "veiculos", "carro", "carros", "automovel", "automoveis", "auto", "autos"],
+  moto: ["moto", "motos", "motocicleta", "motocicletas"],
+};
+const editDistance = (a: string, b: string) => {
+  const previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let diagonal = previous[0]; previous[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const above = previous[j];
+      previous[j] = Math.min(previous[j] + 1, previous[j - 1] + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diagonal = above;
+    }
+  }
+  return previous[b.length];
+};
+function resolveImportedProduct(raw: string, products: { nome: string; ativo: boolean; aliases?: string[] }[]) {
+  const key = normalizeProductKey(raw);
+  if (!key) return { value: raw, note: undefined as string | undefined };
+  const candidates = products.filter(product => product.ativo && product.nome.trim()).map(product => {
+    const productKey = normalizeProductKey(product.nome);
+    const semanticGroup = Object.entries(PRODUCT_SYNONYMS).find(([, words]) => words.includes(productKey));
+    const keys = [productKey, ...(product.aliases ?? []).map(normalizeProductKey), ...(semanticGroup?.[1] ?? [])].filter(Boolean);
+    return { name: product.nome.trim(), keys: [...new Set(keys)] };
+  });
+  const exact = candidates.filter(candidate => candidate.keys.some(candidateKey => candidateKey === key || (candidateKey.length > 4 && candidateKey.replace(/s$/, "") === key.replace(/s$/, ""))));
+  if (exact.length === 1) return { value: exact[0].name, note: raw.trim() === exact[0].name ? undefined : `${raw} → ${exact[0].name}` };
+  if (exact.length > 1) return { value: raw, note: `${raw}: correspondência ambígua; mantido para revisão` };
+  const ranked = candidates.map(candidate => {
+    const score = Math.max(...candidate.keys.map(candidateKey => {
+      const longest = Math.max(key.length, candidateKey.length);
+      return longest ? 1 - editDistance(key, candidateKey) / longest : 0;
+    }));
+    return { ...candidate, score };
+  }).sort((a, b) => b.score - a.score);
+  if (ranked[0]?.score >= 0.84 && (!ranked[1] || ranked[0].score - ranked[1].score >= 0.08)) {
+    return { value: ranked[0].name, note: `${raw} → ${ranked[0].name} (correspondência aproximada)` };
+  }
+  if (ranked[0]?.score >= 0.72) return { value: raw, note: `${raw}: possível correspondência com ${ranked[0].name}; mantido para revisão` };
+  return { value: raw, note: undefined as string | undefined };
+}
+
 const formatImportCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 }).format(value);
 
 function parseCsv(text: string) {
@@ -187,7 +232,15 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
       let csvText: string;
       try { csvText = new TextDecoder("utf-8", { fatal: true }).decode(buffer); }
       catch { csvText = new TextDecoder("windows-1252").decode(buffer); }
-      const parsed = parseCsv(csvText);
+      const parsed = parseCsv(csvText).map(row => {
+        const productNotes: string[] = [];
+        const produtos = row.produtos.map(item => {
+          const resolved = resolveImportedProduct(item.produto, config.produtosAtivos ?? []);
+          if (resolved.note) productNotes.push(resolved.note);
+          return { ...item, produto: resolved.value };
+        });
+        return { ...row, produtos, produto: produtos[0]?.produto ?? "", valorCarta: produtos.reduce((sum, item) => sum + item.quantidade * item.valorUnitario, 0), productNotes };
+      });
       setRows(parsed);
       setFileName(file.name);
       toast.success(`${parsed.length} linhas analisadas.`);
@@ -284,7 +337,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
               <Label>Prévia e tratamento de duplicados</Label>
               <div className="max-h-64 overflow-auto rounded-md border">
                 <table className="w-full text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-2 text-left">Linha / Lead</th><th className="p-2 text-left">Telefone</th><th className="p-2 text-left">Produtos / valores</th><th className="p-2 text-left">Situação</th><th className="p-2 text-left">Ação</th></tr></thead><tbody>
-                  {analyzedRows.map(row => <tr key={row.line} className="border-t"><td className="p-2"><div className="font-medium">{row.nome || "Sem nome"}</div><div className="text-xs text-muted-foreground">Linha {row.line}</div></td><td className="p-2 whitespace-nowrap">{row.telefone || "—"}</td><td className="p-2 min-w-48"><div className="space-y-0.5">{row.produtos.length ? row.produtos.map((item, index) => <div key={index} className="text-xs">{item.produto} · {item.quantidade} × {formatImportCurrency(item.valorUnitario)}</div>) : <span className="text-xs text-muted-foreground">Sem produto informado</span>}<div className="text-xs font-medium">{formatImportCurrency(row.valorCarta)} total</div></div></td><td className="p-2">{row.error ? <span className="text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{row.error}</span> : row.duplicateId ? <span className="text-amber-600">Já existe: {row.duplicateName}</span> : <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Novo lead</span>}</td><td className="p-2">{row.duplicateId && !row.error ? <Select value={row.action} onValueChange={value => setRows(prev => prev.map(item => item.line === row.line ? { ...item, action: value as ImportRow["action"] } : item))}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merge">Acrescentar</SelectItem><SelectItem value="replace">Substituir</SelectItem><SelectItem value="skip">Ignorar</SelectItem></SelectContent></Select> : row.error ? "Corrigir arquivo" : "Importar"}</td></tr>)}
+                  {analyzedRows.map(row => <tr key={row.line} className="border-t"><td className="p-2"><div className="font-medium">{row.nome || "Sem nome"}</div><div className="text-xs text-muted-foreground">Linha {row.line}</div></td><td className="p-2 whitespace-nowrap">{row.telefone || "—"}</td><td className="p-2 min-w-48"><div className="space-y-0.5">{row.produtos.length ? row.produtos.map((item, index) => <div key={index} className="text-xs">{item.produto} · {item.quantidade} × {formatImportCurrency(item.valorUnitario)}</div>) : <span className="text-xs text-muted-foreground">Sem produto informado</span>}{row.productNotes?.map((note, noteIndex) => <div key={noteIndex} className="text-[10px] text-amber-600">{note}</div>)}<div className="text-xs font-medium">{formatImportCurrency(row.valorCarta)} total</div></div></td><td className="p-2">{row.error ? <span className="text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{row.error}</span> : row.duplicateId ? <span className="text-amber-600">Já existe: {row.duplicateName}</span> : <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Novo lead</span>}</td><td className="p-2">{row.duplicateId && !row.error ? <Select value={row.action} onValueChange={value => setRows(prev => prev.map(item => item.line === row.line ? { ...item, action: value as ImportRow["action"] } : item))}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merge">Acrescentar</SelectItem><SelectItem value="replace">Substituir</SelectItem><SelectItem value="skip">Ignorar</SelectItem></SelectContent></Select> : row.error ? "Corrigir arquivo" : "Importar"}</td></tr>)}
                 </tbody></table>
               </div>
               <p className="text-xs text-muted-foreground">Duplicidade identificada por telefone ou e-mail. “Acrescentar” preenche apenas campos vazios e mantém pipeline/etapa atuais; “Substituir” atualiza os dados da planilha, direciona para a pipeline escolhida e preserva o histórico comercial; “Ignorar” mantém o cadastro atual.</p>
