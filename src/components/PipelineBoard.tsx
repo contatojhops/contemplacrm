@@ -310,8 +310,16 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     toast.success(`${ids.size} lead(s) excluído(s)`);
   };
 
-  const productOptions = [...new Set([...(config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome), ...leads.map(l => l.produto)])];
-  const originOptions = [...new Set([...(config.origens ?? []), ...leads.map(l => l.origem)])];
+  // Select.Item não aceita value vazio. Leads importados sem produto continuam válidos,
+  // mas não devem gerar uma opção vazia nos filtros e ações em massa.
+  const productOptions = [...new Set([
+    ...(config.produtosAtivos ?? []).filter(p => p.ativo).map(p => p.nome),
+    ...leads.flatMap(lead => lead.produtos?.length ? lead.produtos.map(item => item.produto) : [lead.produto]),
+  ].map(value => value?.trim()).filter((value): value is string => Boolean(value)))];
+  const originOptions = [...new Set([
+    ...(config.origens ?? []),
+    ...leads.map(lead => lead.origem),
+  ].map(value => value?.trim()).filter((value): value is string => Boolean(value)))];
 
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
