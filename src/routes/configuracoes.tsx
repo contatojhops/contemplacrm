@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Copy, ChevronUp, ChevronDown } from "lucide-react";
 import { DataSection } from "@/components/DataSection";
 import type { EtapaItem, TagItem, Template } from "@/lib/types";
+import { STAGE_COLOR_PALETTE } from "@/lib/stageColors";
 
 export const Route = createFileRoute("/configuracoes")({ head: () => pageHead("Configurações", "Preferências e perfil do consultor."), component: ConfigPage });
 
@@ -41,6 +42,7 @@ function ConfigPage() {
     setFormState(restored);
   }, [config]);
   const [novaEtapa, setNovaEtapa] = useState("");
+  const [novaEtapaCor, setNovaEtapaCor] = useState(STAGE_COLOR_PALETTE[0].value);
   const [novoProduto, setNovoProduto] = useState("");
   const [novaOrigem, setNovaOrigem] = useState("");
   const [novaTag, setNovaTag] = useState({ nome: "", cor: "#3b82f6" });
@@ -116,9 +118,10 @@ function ConfigPage() {
 
   const addEtapa = () => {
     if (!novaEtapa.trim()) return;
-    const nova: EtapaItem = { id: crypto.randomUUID(), nome: novaEtapa.trim() };
+    const nova: EtapaItem = { id: crypto.randomUUID(), nome: novaEtapa.trim(), cor: novaEtapaCor };
     setForm({ ...form, etapas: [...(form.etapas ?? []), nova] });
     setNovaEtapa("");
+    setNovaEtapaCor(STAGE_COLOR_PALETTE[0].value);
   };
 
   const removeEtapa = (id: string) => {
@@ -192,20 +195,52 @@ function ConfigPage() {
       <Card>
         <CardHeader><CardTitle>Pipeline — Etapas</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          {(form.etapas ?? []).map((et, i) => (
-            <div key={et.id} className="flex items-center gap-2">
-              <Input value={et.nome} onChange={(e) => {
-                const arr = [...(form.etapas ?? [])]; arr[i] = { ...arr[i], nome: e.target.value };
-                setForm({ ...form, etapas: arr });
-              }} disabled={et.fixa} />
-              <Button size="icon" variant="ghost" onClick={() => moveEtapa(i, -1)}><ChevronUp className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" onClick={() => moveEtapa(i, 1)}><ChevronDown className="h-4 w-4" /></Button>
-              {et.fixa ? <Badge variant="secondary">Fixa</Badge> : <Button size="icon" variant="ghost" onClick={() => removeEtapa(et.id)}><Trash2 className="h-4 w-4" /></Button>}
+          {(form.etapas ?? []).map((et, i) => {
+            const selectedColor = STAGE_COLOR_PALETTE.find(color => color.value === et.cor) ?? STAGE_COLOR_PALETTE[0];
+            return (
+              <div key={et.id} className="flex items-center gap-2 rounded-lg border border-border/70 p-2">
+                <Input className="min-w-0 flex-1" value={et.nome} onChange={(e) => {
+                  const arr = [...(form.etapas ?? [])]; arr[i] = { ...arr[i], nome: e.target.value };
+                  setForm({ ...form, etapas: arr });
+                }} disabled={et.fixa} />
+                <Select value={et.cor ?? STAGE_COLOR_PALETTE[0].value} onValueChange={(value) => {
+                  const arr = [...(form.etapas ?? [])]; arr[i] = { ...arr[i], cor: value };
+                  setForm({ ...form, etapas: arr });
+                }}>
+                  <SelectTrigger aria-label={`Selecionar cor da etapa ${et.nome}`} title={`Cor: ${selectedColor.name}`} className="h-9 w-11 shrink-0 px-2" style={{ backgroundColor: `color-mix(in srgb, ${selectedColor.value} 60%, transparent)`, borderColor: selectedColor.value }}>
+                    <SelectValue><span className="sr-only">{selectedColor.name}</span></SelectValue>
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {STAGE_COLOR_PALETTE.map(color => (
+                      <SelectItem key={color.value} value={color.value}>
+                        <span className="flex items-center gap-2"><span className="h-3.5 w-3.5 rounded-full border border-white/20" style={{ backgroundColor: color.value }} />{color.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="icon" variant="ghost" aria-label="Mover etapa para cima" onClick={() => moveEtapa(i, -1)}><ChevronUp className="h-4 w-4" /></Button>
+                <Button size="icon" variant="ghost" aria-label="Mover etapa para baixo" onClick={() => moveEtapa(i, 1)}><ChevronDown className="h-4 w-4" /></Button>
+                {et.fixa ? <Badge variant="secondary">Fixa</Badge> : <Button size="icon" variant="ghost" aria-label={`Excluir etapa ${et.nome}`} onClick={() => removeEtapa(et.id)}><Trash2 className="h-4 w-4" /></Button>}
+              </div>
+            );
+          })}
+          <div className="rounded-lg border border-dashed border-border p-3">
+            <div className="flex items-center gap-2">
+              <Input className="min-w-0 flex-1" placeholder="Nova etapa" value={novaEtapa} onChange={(e) => setNovaEtapa(e.target.value)} />
+              <Select value={novaEtapaCor} onValueChange={setNovaEtapaCor}>
+                <SelectTrigger aria-label="Selecionar cor da nova etapa" title={`Cor: ${STAGE_COLOR_PALETTE.find(color => color.value === novaEtapaCor)?.name ?? "Azul"}`} className="h-9 w-11 shrink-0 px-2" style={{ backgroundColor: `color-mix(in srgb, ${novaEtapaCor} 60%, transparent)`, borderColor: novaEtapaCor }}>
+                  <SelectValue><span className="sr-only">Cor selecionada</span></SelectValue>
+                </SelectTrigger>
+                <SelectContent align="end">
+                  {STAGE_COLOR_PALETTE.map(color => (
+                    <SelectItem key={color.value} value={color.value}>
+                      <span className="flex items-center gap-2"><span className="h-3.5 w-3.5 rounded-full border border-white/20" style={{ backgroundColor: color.value }} />{color.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={addEtapa} disabled={!novaEtapa.trim()}><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
             </div>
-          ))}
-          <div className="flex gap-2 pt-2">
-            <Input placeholder="Nova etapa" value={novaEtapa} onChange={(e) => setNovaEtapa(e.target.value)} />
-            <Button onClick={addEtapa}><Plus className="h-4 w-4" /></Button>
           </div>
         </CardContent>
       </Card>

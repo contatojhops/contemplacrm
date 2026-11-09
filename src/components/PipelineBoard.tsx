@@ -24,25 +24,20 @@ import { LeadCard, produtoColor } from "@/components/LeadCard";
 import { LeadModal } from "@/components/LeadModal";
 import { PipelineSelector } from "@/components/PipelineSelector";
 import { formatBRL } from "@/lib/scoring";
+import { getStageHeaderStyle } from "@/lib/stageColors";
 
 
 
 
 
-function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPipeline }: { pipelines: Pipeline[]; showPipeline: boolean; onTransfer: (l: Lead) => void; etapa: Etapa; leads: Lead[]; onEdit: (l: Lead) => void; onAdvance: (l: Lead) => void; }) {
+function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPipeline, stageColor }: { pipelines: Pipeline[]; showPipeline: boolean; onTransfer: (l: Lead) => void; etapa: Etapa; leads: Lead[]; onEdit: (l: Lead) => void; onAdvance: (l: Lead) => void; stageColor?: string; }) {
   const { setNodeRef, isOver } = useDroppable({ id: etapa });
   const total = leads.reduce((s, l) => s + l.valorCarta, 0);
-  const headerColor =
-    ["Lead Novo", "Contato Realizado"].includes(etapa) ? "bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-800" :
-    ["Reunião Agendada", "Proposta Enviada"].includes(etapa) ? "bg-yellow-100 text-yellow-900 border-yellow-300 dark:bg-yellow-950/60 dark:text-yellow-200 dark:border-yellow-800" :
-    etapa === "Aguardando Pagamento" ? "bg-orange-100 text-orange-900 border-orange-300 dark:bg-orange-950/60 dark:text-orange-200 dark:border-orange-800" :
-    etapa === "Fechado" ? "bg-success/10 text-success border-success/30" :
-    etapa === "Perdido" ? "bg-destructive/10 text-destructive border-destructive/30" :
-    "bg-accent border-border";
+  const headerStyle = getStageHeaderStyle(etapa, stageColor);
 
   return (
     <div className="kanban-column flex flex-col w-72 shrink-0">
-      <div className={`kanban-column-header rounded-t-lg border px-3 py-2 ${headerColor}`}>
+      <div className="kanban-column-header rounded-t-lg border px-3 py-2" style={headerStyle}>
         <div className="flex items-center justify-between">
           <span className="font-semibold text-sm">{etapa}</span>
           <span className="text-xs bg-background/80 rounded-full px-2 py-0.5 font-medium">{leads.length}</span>
@@ -464,6 +459,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
                   <Column
                     key={e}
                     etapa={e}
+                    stageColor={config.etapas?.find(item => item.nome === e)?.cor}
                     leads={filtered.filter((l) => l.etapa === e)}
                     onEdit={(l) => { setEditing(l); setModalOpen(true); }}
                     onAdvance={handleAdvance}
