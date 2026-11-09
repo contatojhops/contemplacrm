@@ -42,14 +42,13 @@ function ClientesPage() {
   const [fPerfil, setFPerfil] = useState("all");
 
   // Somente leads na etapa final "Fechado" entram na carteira de clientes.
-  const todos: (Cliente & { lastContactDate: string })[] = useMemo(() => {
+  const todos: Cliente[] = useMemo(() => {
     const enriched = clientes.map((c) => ({
       ...c,
       fase: c.fase ?? (c.contemplado ? "Contemplado" as const : "Cliente Ativo" as const),
-      lastContactDate: c.ultimaInteracao ?? c.fechadoEm,
     }));
     const existingKeys = new Set(enriched.map((c) => `${c.nome.toLowerCase()}|${c.telefone}`));
-    const fromLeads: (Cliente & { lastContactDate: string })[] = leads
+    const fromLeads: Cliente[] = leads
       .filter((l) => l.etapa === "Fechado" && !existingKeys.has(`${l.nome.toLowerCase()}|${l.telefone}`))
       .map((l) => ({
         ...l.detalhesCliente,
@@ -69,7 +68,6 @@ function ClientesPage() {
         perfil: l.perfil as Cliente["perfil"],
         origem: l.origem,
         ultimaInteracao: l.ultimoContato,
-        lastContactDate: l.ultimoContato,
       }));
     return [...enriched, ...fromLeads];
   }, [clientes, leads]);
@@ -159,12 +157,11 @@ function ClientesPage() {
               <TableHead>Data de Entrada</TableHead>
               <TableHead>Data de Fechamento</TableHead>
               <TableHead>Valor Fechado</TableHead>
-              <TableHead>Última Interação</TableHead>
               <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhum cliente encontrado</TableCell></TableRow>}
+            {filtered.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum cliente encontrado</TableCell></TableRow>}
             {filtered.map((item) => {
               const produtosFechados = item.produtos?.length
                 ? item.produtos.map(product => product.produto + (product.quantidade > 1 ? " ×" + product.quantidade : "")).join(", ")
@@ -180,7 +177,6 @@ function ClientesPage() {
                   <TableCell>{item.dataEntrada ? localDate(item.dataEntrada).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell>{item.fechadoEm ? localDate(item.fechadoEm).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell className="font-medium whitespace-nowrap">{formatBRL(item.valorCarta)}</TableCell>
-                  <TableCell>{item.lastContactDate ? localDate(item.lastContactDate).toLocaleDateString("pt-BR") : "—"}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" asChild className="h-7 w-7">
