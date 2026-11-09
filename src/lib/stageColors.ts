@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 export const STAGE_COLOR_PALETTE = [
   { name: "Azul", value: "#3B82F6" }, { name: "Ciano", value: "#06B6D4" },
   { name: "Turquesa", value: "#14B8A6" }, { name: "Verde", value: "#22C55E" },
@@ -9,7 +11,7 @@ export const STAGE_COLOR_PALETTE = [
   { name: "Violeta", value: "#8B5CF6" }, { name: "Cinza", value: "#94A3B8" },
 ] as const;
 
-export function getStageHeaderStyle(stage: string, configuredColor?: string): React.CSSProperties {
+export function getStageHeaderStyle(stage: string, configuredColor?: string): CSSProperties {
   const legacyColors: Record<string, string> = {
     "Lead Novo": "#3B82F6", "Contato Realizado": "#3B82F6",
     "Reunião Agendada": "#EAB308", "Proposta Enviada": "#EAB308",
