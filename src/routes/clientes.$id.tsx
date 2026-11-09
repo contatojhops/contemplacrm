@@ -200,7 +200,7 @@ function ClienteProfilePage() {
                 </div>
               </div>
               <div className="flex justify-between"><span className="text-muted-foreground">E-mail:</span><span className="truncate">{cliente.email}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Produto:</span><span>{cliente.produto}</span></div>
+              <div className="flex items-start justify-between gap-2"><span className="text-muted-foreground">Produtos:</span><div className="flex flex-wrap justify-end gap-1">{[...new Map((baseLead?.produtos?.length ? baseLead.produtos : [{ produto: cliente.produto, quantidade: 1, valorUnitario: cliente.valorCarta }]).map(item => [item.produto, { ...item, quantidade: (baseLead?.produtos ?? []).filter(p => p.produto === item.produto).reduce((sum, p) => sum + p.quantidade, 0) || item.quantidade }])).values()].map(item => <Badge key={item.produto} variant="secondary">{item.produto}{item.quantidade > 1 ? ` ×${item.quantidade}` : ""}</Badge>)}</div></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Carta:</span><span>{formatBRL(cliente.valorCarta)}</span></div>
               {baseLead && <div className="flex justify-between"><span className="text-muted-foreground">Entrada:</span><span>{localDate(baseLead.criadoEm).toLocaleDateString("pt-BR")}</span></div>}
             </div>
