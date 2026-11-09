@@ -37,7 +37,7 @@ const TEMPLATE_HEADERS = ["Nome", "Telefone", "Email", "Produto", "Quantidade", 
 const normalizePhone = (value: string) => value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const normalizeText = (value: string) => value.trim().toLocaleLowerCase("pt-BR");
-const normalizeProductKey = (value: string) => value.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]/g, "");
+const normalizeProductKey = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]/g, "");
 const PRODUCT_SYNONYMS: Record<string, string[]> = {
   imovel: ["imovel", "imoveis", "casa", "casas", "apartamento", "apartamentos", "apto", "aptos"],
   veiculo: ["veiculo", "veiculos", "carro", "carros", "automovel", "automoveis", "auto", "autos"],
