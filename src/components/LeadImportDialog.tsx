@@ -36,6 +36,7 @@ const TEMPLATE_HEADERS = ["Nome", "Telefone", "Email", "Produto", "Quantidade", 
 const normalizePhone = (value: string) => value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const normalizeText = (value: string) => value.trim().toLocaleLowerCase("pt-BR");
+const formatImportCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 }).format(value);
 
 function parseCsv(text: string) {
   const firstLine = text.replace(/^\uFEFF/, "").split(/\r?\n/, 1)[0] ?? "";
@@ -101,8 +102,11 @@ function parseCsv(text: string) {
     const valorCarta2 = get("valorCarta2") ? numberValue(get("valorCarta2")) : 0;
     const quantidade2Raw = get("quantidade2");
     const quantidade2 = quantidade2Raw ? numberValue(quantidade2Raw) : 1;
+    const produto1 = get("produto").trim();
+    // Só cria uma linha de produto quando a respectiva célula estiver preenchida.
+    // Isso evita inventar "Imóvel" quando o contato possui apenas Veículo na segunda posição.
     const produtos: LeadProduto[] = [
-      { produto: get("produto") || "Imóvel", quantidade, valorUnitario: valorCarta },
+      ...(produto1 ? [{ produto: produto1, quantidade, valorUnitario: valorCarta }] : []),
       ...(produto2 ? [{ produto: produto2, quantidade: quantidade2, valorUnitario: valorCarta2 }] : []),
     ];
     const totalProdutos = produtos.reduce((sum, item) => sum + item.quantidade * item.valorUnitario, 0);
@@ -110,7 +114,7 @@ function parseCsv(text: string) {
     const temperature = get("temperatura").trim().toLocaleLowerCase("pt-BR");
     const row: ImportRow = {
       line: index + 2, nome: get("nome"), telefone: get("telefone"), email: get("email"),
-      produto: get("produto") || "Imóvel", valorCarta: totalProdutos, produtos, origem: get("origem") || "Importação",
+      produto: produtos[0]?.produto ?? "", valorCarta: totalProdutos, produtos, origem: get("origem") || "Importação",
       etapa: get("etapa"), perfil: get("perfil"), objetivo: get("objetivo"),
       capacidadeMensal: capacidade, temperatura: temperature === "frio" ? "Frio" : temperature === "quente" ? "Quente" : "Morno",
       observacoes: get("observacoes"), action: "merge",
@@ -214,7 +218,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
         const incoming: Lead = {
           id: existing?.id ?? crypto.randomUUID(), pipeline_id: destinationId,
           nome: row.nome.trim(), telefone: row.telefone.trim(), email: row.email.trim(),
-          produto: (row.produtos[0]?.produto ?? row.produto.trim()) || "Imóvel", valorCarta: row.valorCarta, produtos: row.produtos,
+          produto: row.produtos[0]?.produto ?? row.produto.trim(), valorCarta: row.valorCarta, produtos: row.produtos,
           origem: row.origem.trim() || "Importação",
           etapa: stages.includes(row.etapa) && !["Fechado", "Perdido"].includes(row.etapa) ? row.etapa : initialStage,
           perfil: row.perfil.trim(), observacoes: row.observacoes.trim(),
@@ -279,8 +283,8 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
             <div className="space-y-2">
               <Label>Prévia e tratamento de duplicados</Label>
               <div className="max-h-64 overflow-auto rounded-md border">
-                <table className="w-full text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-2 text-left">Linha / Lead</th><th className="p-2 text-left">Telefone</th><th className="p-2 text-left">Situação</th><th className="p-2 text-left">Ação</th></tr></thead><tbody>
-                  {analyzedRows.map(row => <tr key={row.line} className="border-t"><td className="p-2"><div className="font-medium">{row.nome || "Sem nome"}</div><div className="text-xs text-muted-foreground">Linha {row.line}</div></td><td className="p-2 whitespace-nowrap">{row.telefone || "—"}</td><td className="p-2">{row.error ? <span className="text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{row.error}</span> : row.duplicateId ? <span className="text-amber-600">Já existe: {row.duplicateName}</span> : <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Novo lead</span>}</td><td className="p-2">{row.duplicateId && !row.error ? <Select value={row.action} onValueChange={value => setRows(prev => prev.map(item => item.line === row.line ? { ...item, action: value as ImportRow["action"] } : item))}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merge">Acrescentar</SelectItem><SelectItem value="replace">Substituir</SelectItem><SelectItem value="skip">Ignorar</SelectItem></SelectContent></Select> : row.error ? "Corrigir arquivo" : "Importar"}</td></tr>)}
+                <table className="w-full text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-2 text-left">Linha / Lead</th><th className="p-2 text-left">Telefone</th><th className="p-2 text-left">Produtos / valores</th><th className="p-2 text-left">Situação</th><th className="p-2 text-left">Ação</th></tr></thead><tbody>
+                  {analyzedRows.map(row => <tr key={row.line} className="border-t"><td className="p-2"><div className="font-medium">{row.nome || "Sem nome"}</div><div className="text-xs text-muted-foreground">Linha {row.line}</div></td><td className="p-2 whitespace-nowrap">{row.telefone || "—"}</td><td className="p-2 min-w-48"><div className="space-y-0.5">{row.produtos.length ? row.produtos.map((item, index) => <div key={index} className="text-xs">{item.produto} · {item.quantidade} × {formatImportCurrency(item.valorUnitario)}</div>) : <span className="text-xs text-muted-foreground">Sem produto informado</span>}<div className="text-xs font-medium">{formatImportCurrency(row.valorCarta)} total</div></div></td><td className="p-2">{row.error ? <span className="text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{row.error}</span> : row.duplicateId ? <span className="text-amber-600">Já existe: {row.duplicateName}</span> : <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Novo lead</span>}</td><td className="p-2">{row.duplicateId && !row.error ? <Select value={row.action} onValueChange={value => setRows(prev => prev.map(item => item.line === row.line ? { ...item, action: value as ImportRow["action"] } : item))}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merge">Acrescentar</SelectItem><SelectItem value="replace">Substituir</SelectItem><SelectItem value="skip">Ignorar</SelectItem></SelectContent></Select> : row.error ? "Corrigir arquivo" : "Importar"}</td></tr>)}
                 </tbody></table>
               </div>
               <p className="text-xs text-muted-foreground">Duplicidade identificada por telefone ou e-mail. “Acrescentar” preenche apenas campos vazios e mantém pipeline/etapa atuais; “Substituir” atualiza os dados da planilha, direciona para a pipeline escolhida e preserva o histórico comercial; “Ignorar” mantém o cadastro atual.</p>
