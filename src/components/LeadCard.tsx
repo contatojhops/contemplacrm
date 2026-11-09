@@ -55,7 +55,7 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
       </div>
       <div className="flex flex-wrap items-center gap-1">
         {showPipeline && pipeline && <PipelineBadge pipeline={pipeline} /> }
-        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${produtoColor[lead.produto] ?? "bg-muted text-muted-foreground border-border"}`}>{lead.produto}</span>
+        {[...new Map((lead.produtos?.length ? lead.produtos : [{ produto: lead.produto, quantidade: 1, valorUnitario: lead.valorCarta }]).map(item => [item.produto, { ...item, quantidade: (lead.produtos ?? []).filter(p => p.produto === item.produto).reduce((sum, p) => sum + p.quantidade, 0) || item.quantidade }])).values()].map(item => <span key={item.produto} className={`text-[10px] px-1.5 py-0.5 rounded border ${produtoColor[item.produto] ?? "bg-muted text-muted-foreground border-border"}`}>{item.produto}{item.quantidade > 1 ? ` ×${item.quantidade}` : ""}</span>)}
       </div>
       <div className="text-xs text-muted-foreground">
         {formatBRL(lead.valorCarta)}
