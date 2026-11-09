@@ -200,17 +200,28 @@ function ConfigPage() {
         <CardHeader><CardTitle>Produtos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {(form.produtosAtivos ?? []).map((p, i) => (
-            <div key={i} className="flex items-center justify-between border rounded p-2">
-              <Input className="border-0 max-w-xs" value={p.nome} onChange={(e) => {
-                const arr = [...(form.produtosAtivos ?? [])]; arr[i] = { ...arr[i], nome: e.target.value };
-                setForm({ ...form, produtosAtivos: arr });
-              }} />
-              <div className="flex items-center gap-2">
-                <Switch checked={p.ativo} onCheckedChange={(v) => {
-                  const arr = [...(form.produtosAtivos ?? [])]; arr[i] = { ...arr[i], ativo: v };
+            <div key={i} className="border rounded p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Input className="border-0 max-w-xs" value={p.nome} onChange={(e) => {
+                  const arr = [...(form.produtosAtivos ?? [])]; arr[i] = { ...arr[i], nome: e.target.value };
                   setForm({ ...form, produtosAtivos: arr });
                 }} />
-                <Button size="icon" variant="ghost" onClick={() => confirm(DELETE_CONFIRMATION) && setForm({ ...form, produtosAtivos: (form.produtosAtivos ?? []).filter((_, k) => k !== i), simuladorProdutos: (form.simuladorProdutos ?? []).filter(item => item.produto !== p.nome) })}><Trash2 className="h-4 w-4" /></Button>
+                <div className="flex items-center gap-2">
+                  <Switch checked={p.ativo} onCheckedChange={(v) => {
+                    const arr = [...(form.produtosAtivos ?? [])]; arr[i] = { ...arr[i], ativo: v };
+                    setForm({ ...form, produtosAtivos: arr });
+                  }} />
+                  <Button size="icon" variant="ghost" onClick={() => confirm(DELETE_CONFIRMATION) && setForm({ ...form, produtosAtivos: (form.produtosAtivos ?? []).filter((_, k) => k !== i), simuladorProdutos: (form.simuladorProdutos ?? []).filter(item => item.produto !== p.nome) })}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Variações reconhecidas na importação</Label>
+                <Input value={(p.aliases ?? []).join(", ")} placeholder="Ex.: casa, apartamento, imóvel residencial" onChange={(e) => {
+                  const aliases = [...new Set(e.target.value.split(",").map(value => value.trim()).filter(Boolean))];
+                  const arr = [...(form.produtosAtivos ?? [])]; arr[i] = { ...arr[i], aliases };
+                  setForm({ ...form, produtosAtivos: arr });
+                }} />
+                <p className="text-xs text-muted-foreground">Separe por vírgulas. Essas palavras serão associadas a {p.nome || "este produto"} durante a importação.</p>
               </div>
             </div>
           ))}
