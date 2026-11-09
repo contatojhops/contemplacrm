@@ -100,6 +100,7 @@ export interface Cliente {
   email: string;
   produto: Produto;
   valorCarta: number;
+  produtos?: LeadProduto[];
   parcelasPagas: number;
   parcelasTotais: number;
   contemplado: boolean;
