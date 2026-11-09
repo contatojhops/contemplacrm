@@ -153,13 +153,40 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     });
   };
 
+  const [pendingAdvance, setPendingAdvance] = useState<{ lead: Lead; target: Etapa } | null>(null);
+  const [noActivity, setNoActivity] = useState(false);
+  const [nextType, setNextType] = useState("Follow-up");
+  const [nextDateTime, setNextDateTime] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}T09:00`;
+  });
+  const [nextDescription, setNextDescription] = useState("");
   const [lossLead, setLossLead] = useState<Lead | null>(null);
   const [lossReason, setLossReason] = useState("");
   const move = (lead: Lead, target: Etapa) => {
     if (lead.etapa === target) return;
     if (target === "Perdido") { setLossReason(""); setLossLead(lead); return; }
-    setLeads(prev => prev.map(l => l.id === lead.id ? changeStage(l, target) : l));
-    toast.success(`Movido para ${target}`);
+    setPendingAdvance({ lead, target });
+    setNoActivity(false);
+    setNextType("Follow-up");
+    setNextDescription("");
+    const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9,0,0,0);
+    setNextDateTime(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}T09:00`);
+  };
+  const confirmAdvance = () => {
+    if (!pendingAdvance) return;
+    const { lead, target } = pendingAdvance;
+    if (!noActivity && (!nextDescription.trim() || !nextDateTime || !Number.isFinite(new Date(nextDateTime).getTime()))) { toast.error("Informe a descrição, data e horário da próxima atividade."); return; }
+    const now = new Date().toISOString();
+    setLeads(prev => prev.map(item => item.id === lead.id ? { ...changeStage(item, target), historicoEtapas: [...(item.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: item.etapa, etapaNova: target, data: now, atividadeRegistrada: !noActivity }] } : item));
+    if (!noActivity) {
+      const taskId = crypto.randomUUID();
+      const taskDate = new Date(nextDateTime).toISOString();
+      setTasks(prev => [{ id: taskId, lead_id: lead.id, leadId: lead.id, titulo: nextType + ": " + nextDescription.trim(), tipo: nextType as "Follow-up" | "Ligação" | "WhatsApp" | "Reunião" | "E-mail" | "Visita" | "Enviar Proposta" | "Recontato" | "Outro", cliente: lead.nome, data: taskDate, concluida: false, prioridade: "Média", descricao: nextDescription.trim(), lembrete: true, proximaAcaoId: taskId }, ...prev]);
+      setLeads(prev => prev.map(item => item.id === lead.id ? { ...item, detalhesCliente: { ...item.detalhesCliente, proximaAcao: { id: taskId, data: taskDate, hora: new Date(taskDate).toTimeString().slice(0,5), tipo: nextType, descricao: nextDescription.trim() } } } : item));
+    }
+    setPendingAdvance(null);
+    toast.success(noActivity ? `Movido para ${target} sem registrar atividade` : `Movido para ${target} e próxima atividade agendada`);
   };
   const remove = (lead: Lead) => {
     if (!confirm(DELETE_CONFIRMATION)) return;
@@ -268,7 +295,8 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   };
   const applyBulkStage = () => {
     if (!bulkStage || !selectedCount) return;
-    setLeads(prev => prev.map(lead => selectedLeadIds.has(lead.id) ? changeStage(lead, bulkStage as Etapa) : lead));
+    const now = new Date().toISOString();
+    setLeads(prev => prev.map(lead => selectedLeadIds.has(lead.id) ? { ...changeStage(lead, bulkStage as Etapa), historicoEtapas: [...(lead.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: lead.etapa, etapaNova: bulkStage, data: now, atividadeRegistrada: false }] } : lead));
     setBulkStage("");
     clearSelection();
     toast.success(`Etapa atualizada para ${bulkStage}`);
@@ -297,10 +325,22 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   };
 
   const handleSave = (lead: Lead) => {
-    setLeads((prev) => {
-      const exists = prev.some((p) => p.id === lead.id);
-      return exists ? prev.map((p) => p.id === lead.id ? lead : p) : [lead, ...prev];
+    const existing = leads.find(item => item.id === lead.id);
+    const changedStage = existing && existing.etapa !== lead.etapa;
+    setLeads(prev => {
+      const exists = prev.some(item => item.id === lead.id);
+      const saved = changedStage && existing ? { ...lead, etapa: existing.etapa, stage_changed_at: existing.stage_changed_at, historicoEtapas: existing.historicoEtapas } : lead;
+      return exists ? prev.map(item => item.id === lead.id ? saved : item) : [lead, ...prev];
     });
+    if (changedStage && existing) {
+      setPendingAdvance({ lead: existing, target: lead.etapa });
+      setNoActivity(false);
+      setNextType("Follow-up");
+      setNextDescription("");
+      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9,0,0,0);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setNextDateTime(d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + "T09:00");
+    }
     toast.success(editing ? "Lead atualizado!" : "Lead cadastrado com sucesso!");
     setEditing(null);
   };
@@ -506,6 +546,22 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
         </Card>
       )}
 
+      <Dialog open={!!pendingAdvance} onOpenChange={open => !open && setPendingAdvance(null)}><DialogContent>
+        <DialogHeader><DialogTitle>Avançar lead para {pendingAdvance?.target}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">Defina o próximo passo para {pendingAdvance?.lead.nome}.</p>
+          <div className="flex items-center gap-2 rounded-md border border-border p-3">
+            <Checkbox id="no-next-activity" checked={noActivity} onCheckedChange={value => setNoActivity(value === true)} />
+            <label htmlFor="no-next-activity" className="text-sm cursor-pointer">Não registrar nenhuma atividade no momento</label>
+          </div>
+          {!noActivity && <div className="space-y-3">
+            <div><label className="text-sm font-medium">Tipo de atividade</label><Select value={nextType} onValueChange={setNextType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["Follow-up","Ligação","WhatsApp","Reunião","E-mail","Visita","Enviar Proposta","Recontato","Outro"].map(type=><SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div>
+            <div><label className="text-sm font-medium">Data e horário</label><Input type="datetime-local" value={nextDateTime} onChange={e=>setNextDateTime(e.target.value)} /></div>
+            <div><label className="text-sm font-medium">Descrição da próxima atividade</label><Textarea value={nextDescription} onChange={e=>setNextDescription(e.target.value)} placeholder="Ex.: Ligar para apresentar a simulação..." /></div>
+          </div>}
+        </div>
+        <DialogFooter><Button variant="outline" onClick={()=>setPendingAdvance(null)}>Cancelar</Button><Button onClick={confirmAdvance}>Confirmar avanço</Button></DialogFooter>
+      </DialogContent></Dialog>
       <Dialog open={!!lossLead} onOpenChange={open => !open && setLossLead(null)}><DialogContent><DialogHeader><DialogTitle>Motivo da perda</DialogTitle></DialogHeader><Textarea aria-label="Motivo da perda" value={lossReason} onChange={e => setLossReason(e.target.value)} /><DialogFooter><Button variant="outline" onClick={() => setLossLead(null)}>Cancelar</Button><Button onClick={() => { if (!lossLead || !lossReason.trim()) { toast.error("Informe o motivo da perda."); return; } setLeads(prev => prev.map(l => l.id === lossLead.id ? changeStage(l, "Perdido", lossReason) : l)); setLossLead(null); toast.success("Lead marcado como perdido"); }}>Confirmar perda</Button></DialogFooter></DialogContent></Dialog>
       <Dialog open={!!transfer} onOpenChange={v=>!v&&setTransfer(null)}><DialogContent><DialogHeader><DialogTitle>Mover para outra pipeline</DialogTitle></DialogHeader><Select value={destination} onValueChange={setDestination}><SelectTrigger aria-label="Pipeline de destino"><SelectValue placeholder="Selecione a pipeline" /></SelectTrigger><SelectContent>{pipelines.filter(p=>!p.arquivada&&p.id!==transfer?.pipeline_id).map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select><DialogFooter><Button variant="outline" onClick={()=>setTransfer(null)}>Cancelar</Button><Button disabled={!destination} onClick={()=>{if(!transfer)return;setLeads(prev=>prev.map(l=>l.id===transfer.id?{...l,pipeline_id:destination}:l));setTransfer(null);toast.success("Lead movido para outra pipeline");}}>Mover lead</Button></DialogFooter></DialogContent></Dialog>
       <LeadImportDialog defaultPipelineId={pipelineId} open={importOpen} onOpenChange={setImportOpen} />

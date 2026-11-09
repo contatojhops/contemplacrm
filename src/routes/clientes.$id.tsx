@@ -202,6 +202,7 @@ function ClienteProfilePage() {
               <div className="flex justify-between"><span className="text-muted-foreground">E-mail:</span><span className="truncate">{cliente.email}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Produto:</span><span>{cliente.produto}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Carta:</span><span>{formatBRL(cliente.valorCarta)}</span></div>
+              {baseLead && <div className="flex justify-between"><span className="text-muted-foreground">Entrada:</span><span>{localDate(baseLead.criadoEm).toLocaleDateString("pt-BR")}</span></div>}
             </div>
             {cliente.proximaAcao && (
               <div className="rounded-lg border border-border p-3 bg-accent/50">
@@ -238,7 +239,7 @@ function ClienteProfilePage() {
                 <div><Label>Data de nascimento</Label><Input type="date" value={cliente.dataNascimento ?? ""} onChange={(e) => update({ dataNascimento: e.target.value })} /></div>
                 <div><Label>Profissão</Label><Input value={cliente.profissao ?? ""} onChange={(e) => update({ profissao: e.target.value })} /></div>
                 <div><Label>Renda estimada (R$)</Label><Input type="number" value={cliente.rendaEstimada ?? 0} onChange={(e) => update({ rendaEstimada: Number(e.target.value) })} /></div>
-                <div><Label>Capacidade mensal disponível (R$)</Label><Input type="number" value={cliente.capacidadeMensal ?? 0} onChange={(e) => update({ capacidadeMensal: Number(e.target.value) })} /></div>
+                <div><Label>Capacidade mensal (R$)</Label><Input type="number" value={cliente.capacidadeMensal ?? 0} onChange={(e) => update({ capacidadeMensal: Number(e.target.value) })} /></div>
                 <div className="md:col-span-2"><Label>Objetivo do cliente</Label><Input placeholder="Ex.: comprar imóvel para renda, trocar de veículo, investir..." value={cliente.objetivo ?? ""} onChange={(e) => update({ objetivo: e.target.value })} /></div>
                 <div><Label>Temperatura do lead</Label><Select value={cliente.temperatura ?? "Morno"} onValueChange={(v) => update({ temperatura: v as Cliente["temperatura"] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Frio">Frio</SelectItem><SelectItem value="Morno">Morno</SelectItem><SelectItem value="Quente">Quente</SelectItem></SelectContent></Select></div>
                 <div><Label>Telefone (WhatsApp)</Label><Input value={cliente.telefone} onChange={(e) => update({ telefone: e.target.value })} /></div>
@@ -312,6 +313,10 @@ function ClienteProfilePage() {
             <TabsContent value="historico">
               <Card><CardContent className="p-6 space-y-4">
                 <div className="flex justify-end"><Button onClick={() => setInteracaoModal(true)}><Plus className="h-4 w-4 mr-1" />Registrar Interação</Button></div>
+                {fromLead && baseLead && (baseLead.historicoEtapas ?? []).length > 0 && <div className="space-y-2">
+                  <h3 className="font-semibold text-sm">Histórico de etapas</h3>
+                  {(baseLead.historicoEtapas ?? []).slice().reverse().map(item => <div key={item.id} className="rounded-md border border-border p-2 text-xs"><div className="text-muted-foreground">{new Date(item.data).toLocaleString("pt-BR")}</div><div>{item.etapaAnterior} → {item.etapaNova}</div><div className="text-muted-foreground">{item.atividadeRegistrada ? "Próxima atividade registrada" : "Sem atividade registrada"}</div></div>)}
+                </div>}
                 <div className="relative pl-6 space-y-4 border-l border-border">
                   {(cliente.interacoes ?? []).length === 0 && <p className="text-sm text-muted-foreground">Nenhuma interação registrada</p>}
                   {(cliente.interacoes ?? []).slice().reverse().map((i) => (
