@@ -55,5 +55,5 @@ export function metrics(leads: Lead[], start: Date, end: Date) {
 }
 export function leadCsv(leads: Lead[], pipelines: Pipeline[]) {
   const quote = (value: unknown) => `"${String(value ?? '').replace(/"/g,'""')}"`;
-  return '\uFEFF'+[['Nome','Telefone','Pipeline','Produto','Origem','Etapa','Valor da carta','Criado em'],...leads.map(l => [l.nome,l.telefone,pipelines.find(p=>p.id===l.pipeline_id)?.nome ?? '',l.produto,l.origem,l.etapa,l.valorCarta,l.criadoEm])].map(row=>row.map(quote).join(';')).join('\r\n');
+  return '\uFEFF'+[['Nome','Telefone','Pipeline','Produto','Origem','Etapa','Valor da carta','Criado em'],...leads.map(l => [l.nome,l.telefone,pipelines.find(p=>p.id===l.pipeline_id)?.nome ?? '',(l.produtos?.length ? l.produtos.map(item => `${item.produto} (x${item.quantidade})`).join(" | ") : l.produto),l.origem,l.etapa,l.valorCarta,l.criadoEm])].map(row=>row.map(quote).join(';')).join('\r\n');
 }

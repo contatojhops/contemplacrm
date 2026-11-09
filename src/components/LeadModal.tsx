@@ -1,14 +1,15 @@
 import { usePipelines, useConfig } from "@/lib/store";
 import { GENERAL_ID } from "@/lib/pipelines";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Lead, Produto, Origem, Etapa } from "@/lib/types";
+import type { Lead, LeadProduto, Produto, Origem, Etapa } from "@/lib/types";
 
 
 interface Props {
@@ -30,7 +31,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   const [form, setForm] = useState<Partial<Lead>>(initial ?? {
     pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
     etapa: defaultStage,
-    nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0,
+    nome: "", telefone: "", email: "", produto: "Imóvel", valorCarta: 0, produtos: [{ produto: "Imóvel", quantidade: 1, valorUnitario: 0 }],
     origem: "WhatsApp", perfil: "", observacoes: "",
   });
 
@@ -41,12 +42,13 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
       const history = legacyUpdate && !existingHistory.some(item => item.texto === legacyUpdate)
         ? [...existingHistory, { id: crypto.randomUUID(), texto: legacyUpdate, data: "" }]
         : existingHistory;
-      setForm(initial ? { ...initial, detalhesCliente: { ...initial.detalhesCliente, atualizacoes: "", historicoAtualizacoes: history } } : {
+      setForm(initial ? { ...initial, produtos: initial.produtos?.length ? initial.produtos : [{ produto: initial.produto, quantidade: 1, valorUnitario: initial.valorCarta }], detalhesCliente: { ...initial.detalhesCliente, atualizacoes: "", historicoAtualizacoes: history } } : {
         pipeline_id: defaultPipelineId ?? pipelines.find(p=>!p.arquivada)?.id ?? GENERAL_ID,
         etapa: defaultStage,
         nome: "", telefone: "", email: "",
         produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel",
         valorCarta: 0,
+        produtos: [{ produto: config.produtosAtivos?.find(p => p.ativo)?.nome ?? "Imóvel", quantidade: 1, valorUnitario: 0 }],
         origem: config.origens?.[0] ?? "WhatsApp",
         perfil: "", observacoes: "",
       });
@@ -54,6 +56,11 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
   }, [open, initial, defaultPipelineId, pipelines, config.produtosAtivos, config.origens, defaultStage]);
 
   const update = (patch: Partial<Lead>) => setForm((f) => ({ ...f, ...patch }));
+  const productRows = form.produtos?.length ? form.produtos : [{ produto: form.produto ?? "Imóvel", quantidade: 1, valorUnitario: form.valorCarta ?? 0 }];
+  const totalProdutos = useMemo(() => productRows.reduce((sum, item) => sum + Math.max(0, Number(item.quantidade) || 0) * Math.max(0, Number(item.valorUnitario) || 0), 0), [productRows]);
+  const updateProduct = (index: number, patch: Partial<LeadProduto>) => update({ produtos: productRows.map((item, i) => i === index ? { ...item, ...patch } : item) });
+  const addProduct = () => update({ produtos: [...productRows, { produto: produtos[0] ?? "Imóvel", quantidade: 1, valorUnitario: 0 }] });
+  const removeProduct = (index: number) => update({ produtos: productRows.filter((_, i) => i !== index) });
   const updateCommercial = (patch: Partial<NonNullable<Lead["detalhesCliente"]>>) => setForm(f => ({ ...f, detalhesCliente: { ...f.detalhesCliente, ...patch } }));
   const registerUpdate = () => {
     const text = form.detalhesCliente?.atualizacoes?.trim() ?? "";
@@ -64,7 +71,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
 
   const submit = () => {
     if (!form.nome?.trim() || !form.telefone?.trim()) { toast.error("Preencha nome e telefone."); return; }
-    if ((form.valorCarta ?? 0) < 0) { toast.error("Informe um valor válido."); return; }
+    if (!productRows.length || productRows.some(item => !item.produto?.trim() || !Number.isInteger(Number(item.quantidade)) || Number(item.quantidade) < 1 || !Number.isFinite(Number(item.valorUnitario)) || Number(item.valorUnitario) < 0)) { toast.error("Confira produto, quantidade e valor unitário de cada item."); return; }
     if (!form.pipeline_id || !pipelines.some(p=>p.id===form.pipeline_id && (!p.arquivada || p.id===initial?.pipeline_id))) { toast.error("Selecione uma pipeline disponível."); return; }
     if (!form.etapa || !stageOptions.includes(form.etapa)) { toast.error("Selecione uma etapa válida."); return; }
     const now = new Date().toISOString();
@@ -79,8 +86,9 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
       nome: form.nome.trim(),
       telefone: form.telefone.trim(),
       email: form.email ?? "",
-      produto: form.produto as Produto,
-      valorCarta: Number(form.valorCarta) || 0,
+      produto: productRows[0].produto as Produto,
+      valorCarta: totalProdutos,
+      produtos: productRows.map(item => ({ produto: item.produto, quantidade: Number(item.quantidade), valorUnitario: Number(item.valorUnitario) })),
       origem: form.origem as Origem,
       etapa: (form.etapa as Etapa) ?? defaultStage,
       perfil: form.perfil,
@@ -109,7 +117,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>{initial ? "Editar Lead" : "Novo Lead"}</DialogTitle>
         </DialogHeader>
@@ -126,16 +134,32 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
             <Label>E-mail</Label>
             <Input value={form.email ?? ""} onChange={(e) => update({ email: e.target.value })} />
           </div>
-          <div>
-            <Label>Produto</Label>
-            <Select value={form.produto} onValueChange={(v) => update({ produto: v as Produto })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{[...new Set([...produtos, ...(form.produto ? [form.produto] : [])])].map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Valor da Carta (R$)</Label>
-            <Input type="number" value={form.valorCarta ?? 0} onChange={(e) => update({ valorCarta: Number(e.target.value) })} />
+          <div className="col-span-2 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Produtos de interesse</Label>
+              <span className="text-xs text-muted-foreground">Adicione quantos itens forem necessários</span>
+            </div>
+            <div className="grid grid-cols-[minmax(0,1fr)_76px_minmax(0,0.9fr)_32px] items-center gap-2 px-1">
+              <span className="text-[11px] text-muted-foreground">Produto</span>
+              <span className="text-[11px] text-muted-foreground">Qtd.</span>
+              <span className="text-[11px] text-muted-foreground">Valor unitário (R$)</span>
+              <span />
+            </div>
+            {productRows.map((item, index) => (
+              <div key={index} className="grid grid-cols-[minmax(0,1fr)_76px_minmax(0,0.9fr)_32px] items-center gap-2">
+                <Select value={item.produto} onValueChange={v => updateProduct(index, { produto: v })}>
+                  <SelectTrigger aria-label={`Produto ${index + 1}`}><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{[...new Set([...produtos, item.produto].filter(Boolean))].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                </Select>
+                <Input aria-label={`Quantidade do produto ${index + 1}`} type="number" min="1" step="1" value={item.quantidade} onChange={e => updateProduct(index, { quantidade: Number(e.target.value) })} className="px-2 text-center" />
+                <Input aria-label={`Valor unitário do produto ${index + 1}`} type="number" min="0" value={item.valorUnitario} onChange={e => updateProduct(index, { valorUnitario: Number(e.target.value) })} className="px-2" />
+                <Button type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={`Remover produto ${index + 1}`} disabled={productRows.length === 1} onClick={() => removeProduct(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
+              </div>
+            ))}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <Button type="button" size="sm" variant="outline" onClick={addProduct}><Plus className="mr-1 h-3.5 w-3.5" /> Acrescentar produto</Button>
+              <div className="text-sm font-semibold">Valor total: {totalProdutos.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 2 })}</div>
+            </div>
           </div>
           <div>
             <Label>Origem</Label>

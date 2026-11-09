@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfig, useLeads, usePipelines } from "@/lib/store";
 import { importCollections } from "@/lib/cloudStore";
-import type { Lead, Pipeline, PipelineCor } from "@/lib/types";
+import type { Lead, LeadProduto, Pipeline, PipelineCor } from "@/lib/types";
 
 type ImportRow = {
   line: number;
@@ -17,6 +17,7 @@ type ImportRow = {
   email: string;
   produto: string;
   valorCarta: number;
+  produtos: LeadProduto[];
   origem: string;
   etapa: string;
   perfil: string;
@@ -31,7 +32,7 @@ type ImportRow = {
   action: "merge" | "replace" | "skip";
 };
 
-const TEMPLATE_HEADERS = ["Nome", "Telefone", "Email", "Produto", "Valor da carta", "Origem", "Etapa", "Perfil", "Objetivo", "Capacidade mensal", "Temperatura", "Observações"];
+const TEMPLATE_HEADERS = ["Nome", "Telefone", "Email", "Produto", "Quantidade", "Valor do Produto", "Produto 2", "Quantidade 2", "Valor do Produto 2", "Origem", "Etapa", "Perfil", "Objetivo", "Capacidade mensal", "Temperatura", "Observações"];
 const normalizePhone = (value: string) => value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const normalizeText = (value: string) => value.trim().toLocaleLowerCase("pt-BR");
@@ -65,7 +66,11 @@ function parseCsv(text: string) {
     telefone: ["telefone", "celular", "whatsapp", "phone"],
     email: ["email", "e-mail"],
     produto: ["produto", "interesse", "tipo de crédito"],
-    valorCarta: ["valor da carta", "valor carta", "credito", "crédito", "valor"],
+    quantidade: ["quantidade", "qtd", "qtd."],
+    valorCarta: ["valor do produto", "valor da carta", "valor carta", "credito", "crédito", "valor"],
+    produto2: ["produto 2"],
+    quantidade2: ["quantidade 2", "qtd 2", "qtd. 2"],
+    valorCarta2: ["valor do produto 2", "valor da carta 2", "valor carta 2"],
     origem: ["origem", "fonte"],
     etapa: ["etapa", "status"],
     perfil: ["perfil"],
@@ -90,11 +95,22 @@ function parseCsv(text: string) {
   return rows.slice(1).map((values, index): ImportRow => {
     const get = (field: string) => indexes[field] === undefined ? "" : values[indexes[field]] ?? "";
     const valorCarta = numberValue(get("valorCarta"));
+    const quantidadeRaw = get("quantidade");
+    const quantidade = quantidadeRaw ? numberValue(quantidadeRaw) : 1;
+    const produto2 = get("produto2").trim();
+    const valorCarta2 = get("valorCarta2") ? numberValue(get("valorCarta2")) : 0;
+    const quantidade2Raw = get("quantidade2");
+    const quantidade2 = quantidade2Raw ? numberValue(quantidade2Raw) : 1;
+    const produtos: LeadProduto[] = [
+      { produto: get("produto") || "Imóvel", quantidade, valorUnitario: valorCarta },
+      ...(produto2 ? [{ produto: produto2, quantidade: quantidade2, valorUnitario: valorCarta2 }] : []),
+    ];
+    const totalProdutos = produtos.reduce((sum, item) => sum + item.quantidade * item.valorUnitario, 0);
     const capacidade = get("capacidadeMensal") ? numberValue(get("capacidadeMensal")) : undefined;
     const temperature = get("temperatura").trim().toLocaleLowerCase("pt-BR");
     const row: ImportRow = {
       line: index + 2, nome: get("nome"), telefone: get("telefone"), email: get("email"),
-      produto: get("produto") || "Imóvel", valorCarta, origem: get("origem") || "Importação",
+      produto: get("produto") || "Imóvel", valorCarta: totalProdutos, produtos, origem: get("origem") || "Importação",
       etapa: get("etapa"), perfil: get("perfil"), objetivo: get("objetivo"),
       capacidadeMensal: capacidade, temperatura: temperature === "frio" ? "Frio" : temperature === "quente" ? "Quente" : "Morno",
       observacoes: get("observacoes"), action: "merge",
@@ -102,7 +118,7 @@ function parseCsv(text: string) {
     if (!row.nome.trim()) row.error = "Nome não informado.";
     else if (!normalizePhone(row.telefone)) row.error = "Telefone não informado.";
     else if (row.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())) row.error = "E-mail inválido.";
-    else if (!Number.isFinite(valorCarta) || (capacidade !== undefined && !Number.isFinite(capacidade))) row.error = "Valor numérico inválido.";
+    else if (produtos.some(item => !Number.isFinite(item.valorUnitario) || item.valorUnitario < 0 || !Number.isInteger(item.quantidade) || item.quantidade < 1) || (capacidade !== undefined && !Number.isFinite(capacidade))) row.error = "Confira quantidades e valores numéricos dos produtos.";
     return row;
   });
 }
@@ -198,7 +214,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
         const incoming: Lead = {
           id: existing?.id ?? crypto.randomUUID(), pipeline_id: destinationId,
           nome: row.nome.trim(), telefone: row.telefone.trim(), email: row.email.trim(),
-          produto: row.produto.trim() || "Imóvel", valorCarta: row.valorCarta,
+          produto: (row.produtos[0]?.produto ?? row.produto.trim()) || "Imóvel", valorCarta: row.valorCarta, produtos: row.produtos,
           origem: row.origem.trim() || "Importação",
           etapa: stages.includes(row.etapa) && !["Fechado", "Perdido"].includes(row.etapa) ? row.etapa : initialStage,
           perfil: row.perfil.trim(), observacoes: row.observacoes.trim(),
@@ -211,8 +227,11 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
           replacements[existing.id] = {
             ...existing,
             nome: fill(existing.nome, incoming.nome), telefone: fill(existing.telefone, incoming.telefone),
-            email: fill(existing.email, incoming.email), produto: fill(existing.produto, incoming.produto),
-            valorCarta: existing.valorCarta || incoming.valorCarta, origem: fill(existing.origem, incoming.origem),
+            email: fill(existing.email, incoming.email),
+            produto: fill(existing.produto, incoming.produto),
+            valorCarta: existing.produtos?.length || existing.produto ? existing.valorCarta : incoming.valorCarta,
+            produtos: existing.produtos?.length ? existing.produtos : existing.produto ? [{ produto: existing.produto, quantidade: 1, valorUnitario: existing.valorCarta }] : incoming.produtos,
+            origem: fill(existing.origem, incoming.origem),
             perfil: fill(existing.perfil, incoming.perfil ?? ""), observacoes: fill(existing.observacoes, incoming.observacoes ?? ""),
             detalhesCliente: { ...existing.detalhesCliente, objetivo: fill(existing.detalhesCliente?.objetivo, row.objetivo), capacidadeMensal: existing.detalhesCliente?.capacidadeMensal ?? row.capacidadeMensal, temperatura: existing.detalhesCliente?.temperatura ?? row.temperatura },
           };
