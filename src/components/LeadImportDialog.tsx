@@ -101,8 +101,11 @@ function parseCsv(text: string) {
     const valorCarta2 = get("valorCarta2") ? numberValue(get("valorCarta2")) : 0;
     const quantidade2Raw = get("quantidade2");
     const quantidade2 = quantidade2Raw ? numberValue(quantidade2Raw) : 1;
+    const produto1 = get("produto").trim();
+    // Só cria uma linha de produto quando a respectiva célula estiver preenchida.
+    // Isso evita inventar "Imóvel" quando o contato possui apenas Veículo na segunda posição.
     const produtos: LeadProduto[] = [
-      { produto: get("produto") || "Imóvel", quantidade, valorUnitario: valorCarta },
+      ...(produto1 ? [{ produto: produto1, quantidade, valorUnitario: valorCarta }] : []),
       ...(produto2 ? [{ produto: produto2, quantidade: quantidade2, valorUnitario: valorCarta2 }] : []),
     ];
     const totalProdutos = produtos.reduce((sum, item) => sum + item.quantidade * item.valorUnitario, 0);
@@ -110,7 +113,7 @@ function parseCsv(text: string) {
     const temperature = get("temperatura").trim().toLocaleLowerCase("pt-BR");
     const row: ImportRow = {
       line: index + 2, nome: get("nome"), telefone: get("telefone"), email: get("email"),
-      produto: get("produto") || "Imóvel", valorCarta: totalProdutos, produtos, origem: get("origem") || "Importação",
+      produto: produtos[0]?.produto ?? "", valorCarta: totalProdutos, produtos, origem: get("origem") || "Importação",
       etapa: get("etapa"), perfil: get("perfil"), objetivo: get("objetivo"),
       capacidadeMensal: capacidade, temperatura: temperature === "frio" ? "Frio" : temperature === "quente" ? "Quente" : "Morno",
       observacoes: get("observacoes"), action: "merge",
@@ -214,7 +217,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
         const incoming: Lead = {
           id: existing?.id ?? crypto.randomUUID(), pipeline_id: destinationId,
           nome: row.nome.trim(), telefone: row.telefone.trim(), email: row.email.trim(),
-          produto: (row.produtos[0]?.produto ?? row.produto.trim()) || "Imóvel", valorCarta: row.valorCarta, produtos: row.produtos,
+          produto: row.produtos[0]?.produto ?? row.produto.trim(), valorCarta: row.valorCarta, produtos: row.produtos,
           origem: row.origem.trim() || "Importação",
           etapa: stages.includes(row.etapa) && !["Fechado", "Perdido"].includes(row.etapa) ? row.etapa : initialStage,
           perfil: row.perfil.trim(), observacoes: row.observacoes.trim(),
