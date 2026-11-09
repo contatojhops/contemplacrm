@@ -214,7 +214,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
         const incoming: Lead = {
           id: existing?.id ?? crypto.randomUUID(), pipeline_id: destinationId,
           nome: row.nome.trim(), telefone: row.telefone.trim(), email: row.email.trim(),
-          produto: row.produtos[0]?.produto ?? row.produto.trim() || "Imóvel", valorCarta: row.valorCarta, produtos: row.produtos,
+          produto: (row.produtos[0]?.produto ?? row.produto.trim()) || "Imóvel", valorCarta: row.valorCarta, produtos: row.produtos,
           origem: row.origem.trim() || "Importação",
           etapa: stages.includes(row.etapa) && !["Fechado", "Perdido"].includes(row.etapa) ? row.etapa : initialStage,
           perfil: row.perfil.trim(), observacoes: row.observacoes.trim(),
@@ -227,8 +227,11 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
           replacements[existing.id] = {
             ...existing,
             nome: fill(existing.nome, incoming.nome), telefone: fill(existing.telefone, incoming.telefone),
-            email: fill(existing.email, incoming.email), produto: fill(existing.produto, incoming.produto),
-            valorCarta: existing.valorCarta || incoming.valorCarta, produtos: existing.produtos?.length ? existing.produtos : incoming.produtos, origem: fill(existing.origem, incoming.origem),
+            email: fill(existing.email, incoming.email),
+            produto: fill(existing.produto, incoming.produto),
+            valorCarta: existing.produtos?.length || existing.produto ? existing.valorCarta : incoming.valorCarta,
+            produtos: existing.produtos?.length ? existing.produtos : existing.produto ? [{ produto: existing.produto, quantidade: 1, valorUnitario: existing.valorCarta }] : incoming.produtos,
+            origem: fill(existing.origem, incoming.origem),
             perfil: fill(existing.perfil, incoming.perfil ?? ""), observacoes: fill(existing.observacoes, incoming.observacoes ?? ""),
             detalhesCliente: { ...existing.detalhesCliente, objetivo: fill(existing.detalhesCliente?.objetivo, row.objetivo), capacidadeMensal: existing.detalhesCliente?.capacidadeMensal ?? row.capacidadeMensal, temperatura: existing.detalhesCliente?.temperatura ?? row.temperatura },
           };
