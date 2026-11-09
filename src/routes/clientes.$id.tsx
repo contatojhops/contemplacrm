@@ -67,9 +67,10 @@ function ClienteProfilePage() {
     if (fromLead && baseLead) {
       return {
         id, nome: baseLead.nome, telefone: baseLead.telefone, email: baseLead.email,
-        produto: baseLead.produto, valorCarta: baseLead.valorCarta, parcelasPagas: 0,
-        parcelasTotais: 0, contemplado: false, fechadoEm: baseLead.criadoEm,
-        ...baseLead.detalhesCliente, perfil: baseLead.perfil as ClientePerfil, fase: baseLead.detalhesCliente?.fase ?? "Lead", origem: baseLead.origem,
+        produto: baseLead.produto, valorCarta: baseLead.valorCarta, produtos: baseLead.produtos, parcelasPagas: 0,
+        parcelasTotais: 0, contemplado: false, fechadoEm: baseLead.closed_at ?? baseLead.stage_changed_at ?? "",
+        ...baseLead.detalhesCliente, perfil: baseLead.perfil as ClientePerfil,
+        fase: baseLead.etapa === "Fechado" ? "Cliente Ativo" : baseLead.detalhesCliente?.fase ?? "Lead", origem: baseLead.origem,
         ultimaInteracao: baseLead.ultimoContato, rendaEstimada: baseLead.rendaEstimada,
       };
     }
