@@ -104,6 +104,7 @@ export interface Cliente {
   parcelasPagas: number;
   parcelasTotais: number;
   contemplado: boolean;
+  dataEntrada?: string;
   fechadoEm: string;
   grupo?: string;
   cota?: string;
