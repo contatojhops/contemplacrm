@@ -1,7 +1,7 @@
 import { pageHead } from "@/lib/metadata";
 import { DELETE_CONFIRMATION, localDate, localInput } from "@/lib/crm";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,12 +93,36 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
   onSave: (t: Tarefa) => void;
 }) {
   const [leads] = useLeads();
-  const [leadSearch,setLeadSearch] = useState("");
+  const draftKey = `contemplacrm:draft:task:${initial?.id ?? "new"}`;
+  const wasOpen = useRef(false);
+  const [leadSearch, setLeadSearch] = useState("");
   const [form, setForm] = useState<Partial<Tarefa>>(initial ?? {
     titulo: "", tipo: "Follow-up", cliente: "", data: new Date().toISOString(), concluida: false, prioridade: "Média", descricao: "", lembrete: false,
   });
 
-  useEffect(() => { if (open) setForm(initial ?? { titulo: "", tipo: "Follow-up", cliente: "", data: new Date().toISOString(), concluida: false, prioridade: "Média" }); }, [initial, open]);
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      let restored: { form: Partial<Tarefa>; leadSearch?: string } | null = null;
+      try {
+        const raw = sessionStorage.getItem(draftKey);
+        if (raw) restored = JSON.parse(raw);
+      } catch {
+        sessionStorage.removeItem(draftKey);
+      }
+      setForm(restored?.form ?? initial ?? { titulo: "", tipo: "Follow-up", cliente: "", data: new Date().toISOString(), concluida: false, prioridade: "Média" });
+      setLeadSearch(restored?.leadSearch ?? "");
+    }
+    wasOpen.current = open;
+  }, [open, draftKey]);
+
+  const updateDraft = (nextForm: Partial<Tarefa>, nextSearch = leadSearch) => {
+    setForm(nextForm);
+    try { sessionStorage.setItem(draftKey, JSON.stringify({ form: nextForm, leadSearch: nextSearch })); } catch { /* Keep task editing available without storage. */ }
+  };
+  const updateLeadSearch = (value: string) => {
+    setLeadSearch(value);
+    try { sessionStorage.setItem(draftKey, JSON.stringify({ form, leadSearch: value })); } catch { /* Keep task editing available without storage. */ }
+  };
 
   const submit = () => {
     const linked = leads.find(l=>l.id===form.lead_id);
@@ -120,36 +144,43 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
       proximaAcaoId: initial?.proximaAcaoId,
     };
     onSave(t);
+    sessionStorage.removeItem(draftKey);
     onOpenChange(false);
   };
 
   const dataValue = form.data ? localInput(form.data) : "";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen && sessionStorage.getItem(draftKey)) {
+        if (!window.confirm("Deseja descartar o rascunho desta tarefa?")) return;
+        sessionStorage.removeItem(draftKey);
+      }
+      onOpenChange(nextOpen);
+    }}>
       <DialogContent>
         <DialogHeader><DialogTitle>{initial ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div>
             <Label>Título</Label>
-            <Input value={form.titulo ?? ""} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
+            <Input value={form.titulo ?? ""} onChange={(e) => updateDraft({ ...form, titulo: e.target.value })} />
           </div>
           <div>
             <Label>Lead</Label>
-            <Input aria-label="Buscar lead da tarefa" placeholder="Buscar por nome ou telefone" value={leadSearch} onChange={e=>setLeadSearch(e.target.value)} />
-            <Select value={form.lead_id} onValueChange={v=>setForm({...form,lead_id:v})}><SelectTrigger aria-label="Lead da tarefa"><SelectValue placeholder="Selecione um lead" /></SelectTrigger><SelectContent>{leads.filter(l=>l.nome.toLowerCase().includes(leadSearch.toLowerCase())||l.telefone.includes(leadSearch)).map(l=><SelectItem key={l.id} value={l.id}>{l.nome} · {l.telefone}</SelectItem>)}</SelectContent></Select>
+            <Input aria-label="Buscar lead da tarefa" placeholder="Buscar por nome ou telefone" value={leadSearch} onChange={e=>updateLeadSearch(e.target.value)} />
+            <Select value={form.lead_id} onValueChange={v=>updateDraft({...form,lead_id:v})}><SelectTrigger aria-label="Lead da tarefa"><SelectValue placeholder="Selecione um lead" /></SelectTrigger><SelectContent>{leads.filter(l=>l.nome.toLowerCase().includes(leadSearch.toLowerCase())||l.telefone.includes(leadSearch)).map(l=><SelectItem key={l.id} value={l.id}>{l.nome} · {l.telefone}</SelectItem>)}</SelectContent></Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Tipo</Label>
-              <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as TarefaTipo })}>
+              <Select value={form.tipo} onValueChange={(v) => updateDraft({ ...form, tipo: v as TarefaTipo })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{TIPOS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label>Prioridade</Label>
-              <Select value={form.prioridade} onValueChange={(v) => setForm({ ...form, prioridade: v as TarefaPrioridade })}>
+              <Select value={form.prioridade} onValueChange={(v) => updateDraft({ ...form, prioridade: v as TarefaPrioridade })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{PRIOS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
               </Select>
@@ -157,14 +188,14 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
           </div>
           <div>
             <Label>Data e hora</Label>
-            <Input type="datetime-local" value={dataValue} onChange={(e) => setForm({ ...form, data: e.target.value ? new Date(e.target.value).toISOString() : "" })} />
+            <Input type="datetime-local" value={dataValue} onChange={(e) => updateDraft({ ...form, data: e.target.value ? new Date(e.target.value).toISOString() : "" })} />
           </div>
           <div>
             <Label>Descrição</Label>
-            <Textarea value={form.descricao ?? ""} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
+            <Textarea value={form.descricao ?? ""} onChange={(e) => updateDraft({ ...form, descricao: e.target.value })} />
           </div>
           <div className="flex items-center gap-2">
-            <Switch checked={!!form.lembrete} onCheckedChange={(b) => setForm({ ...form, lembrete: b })} />
+            <Switch checked={!!form.lembrete} onCheckedChange={(b) => updateDraft({ ...form, lembrete: b })} />
             <Label>Ativar lembrete</Label>
           </div>
         </div>
