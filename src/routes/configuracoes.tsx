@@ -42,7 +42,7 @@ function ConfigPage() {
     setFormState(restored);
   }, [config]);
   const [novaEtapa, setNovaEtapa] = useState("");
-  const [novaEtapaCor, setNovaEtapaCor] = useState(STAGE_COLOR_PALETTE[0].value);
+  const [novaEtapaCor, setNovaEtapaCor] = useState<string>(STAGE_COLOR_PALETTE[0].value);
   const [novoProduto, setNovoProduto] = useState("");
   const [novaOrigem, setNovaOrigem] = useState("");
   const [novaTag, setNovaTag] = useState({ nome: "", cor: "#3b82f6" });
