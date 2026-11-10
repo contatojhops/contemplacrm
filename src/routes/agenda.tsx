@@ -455,7 +455,7 @@ function AgendaPage() {
                   <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center justify-between">
                     {titulo}<Badge variant="secondary">{lista.length}</Badge>
                   </CardTitle></CardHeader>
-                  <CardContent className="space-y-2 pt-0 max-h-[680px] overflow-y-auto overscroll-contain pr-2">
+                  <CardContent className="space-y-2 pt-0 max-h-[600px] overflow-y-auto overscroll-contain pr-2">
                     {lista.length === 0 && <p className="text-xs text-muted-foreground py-1">Nada por aqui</p>}
                     {lista.map((t) => (
                       <TaskCard key={t.id} t={t} onToggle={toggle} onEdit={(t) => { setEditing(t); setModalOpen(true); }} onDelete={remove} onReschedule={reschedule} onLeadClick={setSelectedLeadId} />
@@ -473,7 +473,7 @@ function AgendaPage() {
                   <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center justify-between">
                     {titulo}<Badge variant="secondary">{lista.length}</Badge>
                   </CardTitle></CardHeader>
-                  <CardContent className="space-y-2 pt-0 max-h-[680px] overflow-y-auto overscroll-contain pr-2">
+                  <CardContent className="space-y-2 pt-0 max-h-[600px] overflow-y-auto overscroll-contain pr-2">
                     {lista.length === 0 && <p className="text-xs text-muted-foreground py-1">Nada por aqui</p>}
                     {lista.map((t) => (
                       <TaskCard key={t.id} t={t} onToggle={toggle} onEdit={(t) => { setEditing(t); setModalOpen(true); }} onDelete={remove} onReschedule={reschedule} onLeadClick={setSelectedLeadId} />
