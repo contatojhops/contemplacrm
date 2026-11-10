@@ -1,6 +1,6 @@
 import { pageHead } from "@/lib/metadata";
-import { DELETE_CONFIRMATION, localDate, localInput } from "@/lib/crm";
-import { createFileRoute } from "@tanstack/react-router";
+import { DELETE_CONFIRMATION, localDate, localInput, whatsappUrl } from "@/lib/crm";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,18 +45,20 @@ function isSameDay(a: Date, b: Date) {
 
 function startOfDay(d: Date) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
 
-function TaskCard({ t, onToggle, onEdit, onDelete, onReschedule }: {
+function TaskCard({ t, onToggle, onEdit, onDelete, onReschedule, onLeadClick }: {
   t: Tarefa;
   onToggle: (id: string) => void;
   onEdit: (t: Tarefa) => void;
   onDelete: (id: string) => void;
   onReschedule: (t: Tarefa) => void;
+  onLeadClick: (leadId: string) => void;
 }) {
   const Icon = tipoIcon[t.tipo] ?? MoreHorizontal;
+  const linkedLeadId = t.lead_id || t.leadId;
   const overdue = !t.concluida && localDate(t.data) < new Date() && !isSameDay(localDate(t.data), new Date());
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="border border-border rounded-lg p-3 bg-card flex items-start gap-3">
+    <div className={`border border-border rounded-lg p-3 bg-card flex items-start gap-3 transition-colors ${linkedLeadId ? "cursor-pointer hover:border-primary/50 hover:bg-accent/30" : ""}`} onClick={() => linkedLeadId && onLeadClick(linkedLeadId)} role={linkedLeadId ? "button" : undefined} tabIndex={linkedLeadId ? 0 : undefined} onKeyDown={(e) => { if (linkedLeadId && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onLeadClick(linkedLeadId); } }}>
       <Icon className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
@@ -71,15 +73,15 @@ function TaskCard({ t, onToggle, onEdit, onDelete, onReschedule }: {
           {localDate(t.data).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
         </div>
         {t.descricao && (
-          <div className="text-xs cursor-pointer" onClick={() => setExpanded(!expanded)}>
+          <div className="text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
             {expanded ? t.descricao : (t.descricao.length > 60 ? t.descricao.slice(0, 60) + "…" : t.descricao)}
           </div>
         )}
         <div className="flex gap-1 pt-1">
-          <Button size="sm" variant="outline" onClick={() => onToggle(t.id)}><Check className="h-3 w-3 mr-1" />{t.concluida ? "Reabrir" : "Concluir"}</Button>
-          <Button size="sm" variant="ghost" aria-label="Editar tarefa" title="Editar tarefa" onClick={() => onEdit(t)}><Pencil className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" aria-label="Reagendar tarefa" title="Reagendar tarefa" onClick={() => onReschedule(t)}><Repeat className="h-3 w-3" /></Button>
-          <Button size="sm" variant="ghost" aria-label="Excluir tarefa" title="Excluir tarefa" onClick={() => onDelete(t.id)}><Trash2 className="h-3 w-3" /></Button>
+          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onToggle(t.id); }}><Check className="h-3 w-3 mr-1" />{t.concluida ? "Reabrir" : "Concluir"}</Button>
+          <Button size="sm" variant="ghost" aria-label="Editar tarefa" title="Editar tarefa" onClick={(e) => { e.stopPropagation(); onEdit(t); }}><Pencil className="h-3 w-3" /></Button>
+          <Button size="sm" variant="ghost" aria-label="Reagendar tarefa" title="Reagendar tarefa" onClick={(e) => { e.stopPropagation(); onReschedule(t); }}><Repeat className="h-3 w-3" /></Button>
+          <Button size="sm" variant="ghost" aria-label="Excluir tarefa" title="Excluir tarefa" onClick={(e) => { e.stopPropagation(); onDelete(t.id); }}><Trash2 className="h-3 w-3" /></Button>
         </div>
       </div>
     </div>
@@ -269,11 +271,13 @@ function CalendarView({ tarefas, onDayClick }: { tarefas: Tarefa[]; onDayClick: 
 function AgendaPage() {
   const [savedTasks, setTarefas] = useTarefas();
   const [leads, setLeads] = useLeads();
-  const tarefas = savedTasks.map(t=>({...t,cliente:leads.find(l=>l.id===t.lead_id)?.nome ?? t.cliente}));
+  const tarefas = savedTasks.map(t=>({...t,cliente:leads.find(l=>l.id===(t.lead_id || t.leadId))?.nome ?? t.cliente}));
   const [view, setView] = useState<"calendario" | "lista">("lista");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Tarefa | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const selectedLead = selectedLeadId ? leads.find(lead => lead.id === selectedLeadId) : undefined;
 
   const toggle = (id: string) => {
     const task = savedTasks.find(t => t.id === id);
@@ -385,15 +389,19 @@ function AgendaPage() {
     return { hoje, atrasadas, semana, concluidasMes };
   }, [tarefas]);
 
-  const grupos = useMemo(() => ({
-    "Concluídas": tarefas.filter(t => t.concluida && localDate(t.data) < today),
-    "Futuras": tarefas.filter(t => localDate(t.data) >= endOfMonth),
-    Atrasadas: tarefas.filter((t) => !t.concluida && localDate(t.data) < today),
-    Hoje: tarefas.filter((t) => isSameDay(localDate(t.data), now)),
-    Amanhã: tarefas.filter((t) => isSameDay(localDate(t.data), tomorrow)),
-    "Esta Semana": tarefas.filter((t) => { const d = localDate(t.data); return d > tomorrow && d < endOfWeek; }),
-    "Próximo Mês": tarefas.filter((t) => { const d = localDate(t.data); return d >= endOfWeek && d < endOfMonth; }),
-  }), [tarefas]);
+  const grupos = useMemo(() => {
+    const porDataEHora = (a: Tarefa, b: Tarefa) => localDate(a.data).getTime() - localDate(b.data).getTime();
+    const pendentes = tarefas.filter(t => !t.concluida);
+    return {
+      "Concluídas": tarefas.filter(t => t.concluida).sort(porDataEHora),
+      "Futuras": pendentes.filter(t => localDate(t.data) >= endOfMonth).sort(porDataEHora),
+      Atrasadas: pendentes.filter(t => localDate(t.data) < today).sort(porDataEHora),
+      Hoje: pendentes.filter(t => isSameDay(localDate(t.data), now)).sort(porDataEHora),
+      Amanhã: pendentes.filter(t => isSameDay(localDate(t.data), tomorrow)).sort(porDataEHora),
+      "Esta Semana": pendentes.filter(t => { const d = localDate(t.data); return d > tomorrow && d < endOfWeek; }).sort(porDataEHora),
+      "Próximo Mês": pendentes.filter(t => { const d = localDate(t.data); return d >= endOfWeek && d < endOfMonth; }).sort(porDataEHora),
+    };
+  }, [tarefas]);
 
   const dayTasks = selectedDay ? tarefas.filter((t) => isSameDay(localDate(t.data), selectedDay)) : [];
 
@@ -432,29 +440,91 @@ function AgendaPage() {
             <CardContent className="space-y-2">
               {dayTasks.length === 0 && <p className="text-sm text-muted-foreground">Sem tarefas</p>}
               {dayTasks.map((t) => (
-                <TaskCard key={t.id} t={t} onToggle={toggle} onEdit={(t) => { setEditing(t); setModalOpen(true); }} onDelete={remove} onReschedule={reschedule} />
+                <TaskCard key={t.id} t={t} onToggle={toggle} onEdit={(t) => { setEditing(t); setModalOpen(true); }} onDelete={remove} onReschedule={reschedule} onLeadClick={setSelectedLeadId} />
               ))}
             </CardContent>
           </Card>
         </div>
       ) : (
-        <div className="space-y-4">
-          {Object.entries(grupos).map(([titulo, lista]) => (
-            <Card key={titulo} className={titulo === "Atrasadas" && lista.length > 0 ? "border-destructive/50" : ""}>
-              <CardHeader><CardTitle className="text-base flex items-center justify-between">
-                {titulo}<Badge variant="secondary">{lista.length}</Badge>
-              </CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {lista.length === 0 && <p className="text-sm text-muted-foreground">Nada por aqui</p>}
-                {lista.map((t) => (
-                  <TaskCard key={t.id} t={t} onToggle={toggle} onEdit={(t) => { setEditing(t); setModalOpen(true); }} onDelete={remove} onReschedule={reschedule} />
-                ))}
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
+            {(["Hoje", "Amanhã", "Esta Semana", "Próximo Mês"] as const).map((titulo) => {
+              const lista = grupos[titulo];
+              return (
+                <Card key={titulo} className="min-w-0">
+                  <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center justify-between">
+                    {titulo}<Badge variant="secondary">{lista.length}</Badge>
+                  </CardTitle></CardHeader>
+                  <CardContent className="space-y-2 pt-0 max-h-[600px] overflow-y-auto overscroll-contain pr-2">
+                    {lista.length === 0 && <p className="text-xs text-muted-foreground py-1">Nada por aqui</p>}
+                    {lista.map((t) => (
+                      <TaskCard key={t.id} t={t} onToggle={toggle} onEdit={(t) => { setEditing(t); setModalOpen(true); }} onDelete={remove} onReschedule={reschedule} onLeadClick={setSelectedLeadId} />
+                    ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+            {(["Concluídas", "Futuras", "Atrasadas"] as const).map((titulo) => {
+              const lista = grupos[titulo];
+              return (
+                <Card key={titulo} className={titulo === "Atrasadas" && lista.length > 0 ? "border-destructive/50 min-w-0" : "min-w-0"}>
+                  <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center justify-between">
+                    {titulo}<Badge variant="secondary">{lista.length}</Badge>
+                  </CardTitle></CardHeader>
+                  <CardContent className="space-y-2 pt-0 max-h-[600px] overflow-y-auto overscroll-contain pr-2">
+                    {lista.length === 0 && <p className="text-xs text-muted-foreground py-1">Nada por aqui</p>}
+                    {lista.map((t) => (
+                      <TaskCard key={t.id} t={t} onToggle={toggle} onEdit={(t) => { setEditing(t); setModalOpen(true); }} onDelete={remove} onReschedule={reschedule} onLeadClick={setSelectedLeadId} />
+                    ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
       )}
 
+      <Dialog open={!!selectedLeadId} onOpenChange={(open) => { if (!open) setSelectedLeadId(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{selectedLead?.nome ?? "Lead vinculado à tarefa"}</DialogTitle>
+          </DialogHeader>
+          {selectedLead ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border p-3 space-y-2">
+                <div className="text-xs text-muted-foreground font-medium">CONTATO</div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm">{selectedLead.telefone || "Telefone não informado"}</span>
+                  {selectedLead.telefone && <Button size="sm" variant="outline" asChild><a href={whatsappUrl(selectedLead.telefone)} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 mr-1" />WhatsApp</a></Button>}
+                </div>
+                {selectedLead.email && <div className="text-sm text-muted-foreground break-all">{selectedLead.email}</div>}
+              </div>
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground font-medium">PRODUTOS DE INTERESSE</div>
+                {(selectedLead.produtos?.length ? selectedLead.produtos : selectedLead.produto ? [{ produto: selectedLead.produto, quantidade: 1, valorUnitario: selectedLead.valorCarta }] : []).map((item, index) => (
+                  <div key={index} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium">{item.produto}</div>
+                      <div className="text-xs text-muted-foreground">Qtd.: {item.quantidade} · Unitário: {item.valorUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                    </div>
+                    <div className="text-sm font-semibold whitespace-nowrap">{(item.valorUnitario * item.quantidade).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                  </div>
+                ))}
+                {!selectedLead.produtos?.length && !selectedLead.produto && <p className="text-sm text-muted-foreground">Nenhum produto informado.</p>}
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Etapa: {selectedLead.etapa}</span>
+                <span>{selectedLead.origem}</span>
+              </div>
+              <Button className="w-full" variant="outline" asChild><Link to="/clientes/$id" params={{ id: `lead_${selectedLead.id}` }}>Abrir perfil completo</Link></Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Este lead não está mais disponível no CRM.</p>
+          )}
+        </DialogContent>
+      </Dialog>
       <TaskModal open={modalOpen} onOpenChange={setModalOpen} initial={editing} onSave={save} />
     </div>
   );
