@@ -54,10 +54,11 @@ function TaskCard({ t, onToggle, onEdit, onDelete, onReschedule, onLeadClick }: 
   onLeadClick: (leadId: string) => void;
 }) {
   const Icon = tipoIcon[t.tipo] ?? MoreHorizontal;
+  const linkedLeadId = t.lead_id || t.leadId;
   const overdue = !t.concluida && localDate(t.data) < new Date() && !isSameDay(localDate(t.data), new Date());
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className={`border border-border rounded-lg p-3 bg-card flex items-start gap-3 transition-colors ${t.lead_id ? "cursor-pointer hover:border-primary/50 hover:bg-accent/30" : ""}`} onClick={() => t.lead_id && onLeadClick(t.lead_id)} role={t.lead_id ? "button" : undefined} tabIndex={t.lead_id ? 0 : undefined} onKeyDown={(e) => { if (t.lead_id && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onLeadClick(t.lead_id); } }}>
+    <div className={`border border-border rounded-lg p-3 bg-card flex items-start gap-3 transition-colors ${linkedLeadId ? "cursor-pointer hover:border-primary/50 hover:bg-accent/30" : ""}`} onClick={() => linkedLeadId && onLeadClick(linkedLeadId)} role={linkedLeadId ? "button" : undefined} tabIndex={linkedLeadId ? 0 : undefined} onKeyDown={(e) => { if (linkedLeadId && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onLeadClick(linkedLeadId); } }}>
       <Icon className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
@@ -270,7 +271,7 @@ function CalendarView({ tarefas, onDayClick }: { tarefas: Tarefa[]; onDayClick: 
 function AgendaPage() {
   const [savedTasks, setTarefas] = useTarefas();
   const [leads, setLeads] = useLeads();
-  const tarefas = savedTasks.map(t=>({...t,cliente:leads.find(l=>l.id===t.lead_id)?.nome ?? t.cliente}));
+  const tarefas = savedTasks.map(t=>({...t,cliente:leads.find(l=>l.id===(t.lead_id || t.leadId))?.nome ?? t.cliente}));
   const [view, setView] = useState<"calendario" | "lista">("lista");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Tarefa | null>(null);
@@ -502,7 +503,7 @@ function AgendaPage() {
                   <div key={index} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
                     <div className="min-w-0">
                       <div className="text-sm font-medium">{item.produto}</div>
-                      <div className="text-xs text-muted-foreground">Quantidade: {item.quantidade}</div>
+                      <div className="text-xs text-muted-foreground">Qtd.: {item.quantidade} · Unitário: {item.valorUnitario.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
                     </div>
                     <div className="text-sm font-semibold whitespace-nowrap">{(item.valorUnitario * item.quantidade).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
                   </div>
