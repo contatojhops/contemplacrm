@@ -42,11 +42,21 @@ export function ReminderWatcher() {
       const due = tasks
         .filter((task) => task.lembrete && !task.concluida && !!task.data)
         .map((task) => ({ task, timestamp: new Date(task.data).getTime(), key: storageKey(task) }))
-        .filter(({ timestamp }) =>
-          Number.isFinite(timestamp) &&
-          timestamp > now &&
-          now >= timestamp - EARLY_WINDOW_MS
-        )
+        .filter(({ timestamp, key }) => {
+          if (!Number.isFinite(timestamp)) return false;
+
+          const shown = readNumber(`${key}:shown`);
+          if (shown) return false;
+
+          const snoozedOnce = readNumber(`${key}:snoozed-once`);
+          const snoozeUntil = readNumber(`${key}:snooze-until`);
+
+          // A snoozed reminder must return after its 5-minute delay,
+          // even if the task's original scheduled time has already passed.
+          if (snoozedOnce) return snoozeUntil > 0 && snoozeUntil <= now;
+
+          return timestamp > now && now >= timestamp - EARLY_WINDOW_MS;
+        })
         .sort((a, b) => a.timestamp - b.timestamp);
 
       for (const item of due) {
