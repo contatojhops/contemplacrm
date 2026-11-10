@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { reloadAll, setCloudUser, useCloudReady, useCloudError } from "@/lib/cloudStore";
 import { LocalImportPrompt } from "./LocalImportPrompt";
+import { ReminderWatcher } from "./ReminderWatcher";
 
 const PUBLIC_PATHS = ["/login", "/reset-password"];
 
@@ -76,6 +77,7 @@ export function AppLayout() {
       </div>
       {ready && <FloatingActionButton />}
       {ready && <LocalImportPrompt />}
+      {ready && <ReminderWatcher />}
       <Toaster richColors position="top-right" />
     </div>
   );
