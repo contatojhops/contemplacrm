@@ -51,11 +51,21 @@ export function ReminderWatcher() {
       for (const item of due) {
         const shownKey = `${item.key}:shown`;
         const snoozeKey = `${item.key}:snooze-until`;
+        const snoozedOnceKey = `${item.key}:snoozed-once`;
         const shown = readNumber(shownKey);
         const snoozeUntil = readNumber(snoozeKey);
+        const snoozedOnce = readNumber(snoozedOnceKey);
 
         if (shown) continue;
         if (snoozeUntil > now) continue;
+        // A task may be postponed only once; after that, dismissing it is final.
+        if (snoozedOnce && snoozeUntil && snoozeUntil <= now) {
+          try {
+            localStorage.setItem(shownKey, "1");
+            localStorage.removeItem(snoozeKey);
+          } catch { /* The current browser session can still continue. */ }
+          continue;
+        }
 
         // Claim this reminder before opening the dialog to avoid duplicate tabs.
         // Snoozing explicitly releases the claim for one final alert.
@@ -110,8 +120,16 @@ export function ReminderWatcher() {
     if (!active) return;
     const snoozeKey = `${active.key}:snooze-until`;
     try {
-      localStorage.setItem(snoozeKey, String(Date.now() + SNOOZE_MS));
-      localStorage.removeItem(`${active.key}:shown`);
+      const snoozedOnceKey = `${active.key}:snoozed-once`;
+      const alreadySnoozed = readNumber(snoozedOnceKey);
+      if (alreadySnoozed) {
+        localStorage.setItem(`${active.key}:shown`, "1");
+        localStorage.removeItem(snoozeKey);
+      } else {
+        localStorage.setItem(snoozedOnceKey, "1");
+        localStorage.setItem(snoozeKey, String(Date.now() + SNOOZE_MS));
+        localStorage.removeItem(`${active.key}:shown`);
+      }
     } catch {
       // If storage is unavailable, dismiss this display without changing the task.
     }
