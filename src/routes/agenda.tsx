@@ -1,6 +1,6 @@
 import { pageHead } from "@/lib/metadata";
 import { DELETE_CONFIRMATION, localDate, localInput, whatsappUrl } from "@/lib/crm";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -442,7 +442,7 @@ function AgendaPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-start">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-start">
             {(["Hoje", "Amanhã", "Esta Semana", "Próximo Mês"] as const).map((titulo) => {
               const lista = grupos[titulo];
               return (
@@ -513,7 +513,7 @@ function AgendaPage() {
                 <span>Etapa: {selectedLead.etapa}</span>
                 <span>{selectedLead.origem}</span>
               </div>
-              <Button className="w-full" variant="outline" onClick={() => { const id = selectedLead.id; setSelectedLeadId(null); window.location.href = `/clientes/lead_${id}`; }}>Abrir perfil completo</Button>
+              <Button className="w-full" variant="outline" asChild><Link to="/clientes/$id" params={{ id: `lead_${selectedLead.id}` }}>Abrir perfil completo</Link></Button>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">Este lead não está mais disponível no CRM.</p>
