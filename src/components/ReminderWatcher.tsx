@@ -51,10 +51,8 @@ export function ReminderWatcher() {
       for (const item of due) {
         const shownKey = `${item.key}:shown`;
         const snoozeKey = `${item.key}:snooze-until`;
-        const snoozedOnceKey = `${item.key}:snoozed-once`;
         const shown = readNumber(shownKey);
         const snoozeUntil = readNumber(snoozeKey);
-        const snoozedOnce = readNumber(snoozedOnceKey);
 
         if (shown) continue;
         if (snoozeUntil > now) continue;
