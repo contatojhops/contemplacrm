@@ -51,10 +51,8 @@ export function ReminderWatcher() {
       for (const item of due) {
         const shownKey = `${item.key}:shown`;
         const snoozeKey = `${item.key}:snooze-until`;
-        const snoozeCountKey = `${item.key}:snooze-count`;
         const shown = readNumber(shownKey);
         const snoozeUntil = readNumber(snoozeKey);
-        const snoozeCount = readNumber(snoozeCountKey);
 
         if (shown) continue;
         if (snoozeUntil > now) continue;
@@ -111,10 +109,8 @@ export function ReminderWatcher() {
   const snooze = () => {
     if (!active) return;
     const snoozeKey = `${active.key}:snooze-until`;
-    const countKey = `${active.key}:snooze-count`;
     try {
       localStorage.setItem(snoozeKey, String(Date.now() + SNOOZE_MS));
-      localStorage.setItem(countKey, "1");
       localStorage.removeItem(`${active.key}:shown`);
     } catch {
       // If storage is unavailable, dismiss this display without changing the task.
