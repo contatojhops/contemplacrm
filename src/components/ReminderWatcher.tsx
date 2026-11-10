@@ -58,14 +58,6 @@ export function ReminderWatcher() {
 
         if (shown) continue;
         if (snoozeUntil > now) continue;
-        // A task may be postponed only once; after that, dismissing it is final.
-        if (snoozedOnce && snoozeUntil && snoozeUntil <= now) {
-          try {
-            localStorage.setItem(shownKey, "1");
-            localStorage.removeItem(snoozeKey);
-          } catch { /* The current browser session can still continue. */ }
-          continue;
-        }
 
         // Claim this reminder before opening the dialog to avoid duplicate tabs.
         // Snoozing explicitly releases the claim for one final alert.
