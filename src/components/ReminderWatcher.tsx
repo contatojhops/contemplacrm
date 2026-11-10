@@ -59,14 +59,13 @@ export function ReminderWatcher() {
         if (shown) continue;
         if (snoozeUntil > now) continue;
 
-        // After one five-minute snooze, show the reminder once more and close its cycle.
-        if (snoozeCount >= 1) {
-          try {
-            localStorage.setItem(shownKey, "1");
-            localStorage.removeItem(snoozeKey);
-          } catch {
-            // The in-memory alert still works if browser storage is unavailable.
-          }
+        // Claim this reminder before opening the dialog to avoid duplicate tabs.
+        // Snoozing explicitly releases the claim for one final alert.
+        try {
+          localStorage.setItem(shownKey, "1");
+          localStorage.removeItem(snoozeKey);
+        } catch {
+          // The in-memory alert still works if browser storage is unavailable.
         }
 
         const reminder = { task: item.task, key: item.key };
@@ -116,6 +115,7 @@ export function ReminderWatcher() {
     try {
       localStorage.setItem(snoozeKey, String(Date.now() + SNOOZE_MS));
       localStorage.setItem(countKey, "1");
+      localStorage.removeItem(`${active.key}:shown`);
     } catch {
       // If storage is unavailable, dismiss this display without changing the task.
     }
