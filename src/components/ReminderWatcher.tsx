@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { BellRing, Check, Clock3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useTarefas } from "@/lib/store";
+import { useCloudCollection } from "@/lib/cloudStore";
 import type { Tarefa } from "@/lib/types";
 
 const CHECK_INTERVAL_MS = 15_000;
@@ -25,7 +25,8 @@ function readNumber(key: string, fallback = 0) {
 }
 
 export function ReminderWatcher() {
-  const [tasks, saveTasks] = useTarefas();
+  // Subscribe directly to the task collection; reminder checks do not need lead lookup/normalization.
+  const [tasks, saveTasks] = useCloudCollection<Tarefa>("tarefas");
   const [active, setActive] = useState<ReminderItem | null>(null);
   const activeRef = useRef<ReminderItem | null>(null);
 
