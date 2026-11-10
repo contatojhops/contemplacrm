@@ -389,15 +389,19 @@ function AgendaPage() {
     return { hoje, atrasadas, semana, concluidasMes };
   }, [tarefas]);
 
-  const grupos = useMemo(() => ({
-    "Concluídas": tarefas.filter(t => t.concluida && localDate(t.data) < today),
-    "Futuras": tarefas.filter(t => localDate(t.data) >= endOfMonth),
-    Atrasadas: tarefas.filter((t) => !t.concluida && localDate(t.data) < today),
-    Hoje: tarefas.filter((t) => isSameDay(localDate(t.data), now)),
-    Amanhã: tarefas.filter((t) => isSameDay(localDate(t.data), tomorrow)),
-    "Esta Semana": tarefas.filter((t) => { const d = localDate(t.data); return d > tomorrow && d < endOfWeek; }),
-    "Próximo Mês": tarefas.filter((t) => { const d = localDate(t.data); return d >= endOfWeek && d < endOfMonth; }),
-  }), [tarefas]);
+  const grupos = useMemo(() => {
+    const porDataEHora = (a: Tarefa, b: Tarefa) => localDate(a.data).getTime() - localDate(b.data).getTime();
+    const pendentes = tarefas.filter(t => !t.concluida);
+    return {
+      "Concluídas": tarefas.filter(t => t.concluida).sort(porDataEHora),
+      "Futuras": pendentes.filter(t => localDate(t.data) >= endOfMonth).sort(porDataEHora),
+      Atrasadas: pendentes.filter(t => localDate(t.data) < today).sort(porDataEHora),
+      Hoje: pendentes.filter(t => isSameDay(localDate(t.data), now)).sort(porDataEHora),
+      Amanhã: pendentes.filter(t => isSameDay(localDate(t.data), tomorrow)).sort(porDataEHora),
+      "Esta Semana": pendentes.filter(t => { const d = localDate(t.data); return d > tomorrow && d < endOfWeek; }).sort(porDataEHora),
+      "Próximo Mês": pendentes.filter(t => { const d = localDate(t.data); return d >= endOfWeek && d < endOfMonth; }).sort(porDataEHora),
+    };
+  }, [tarefas]);
 
   const dayTasks = selectedDay ? tarefas.filter((t) => isSameDay(localDate(t.data), selectedDay)) : [];
 
@@ -451,7 +455,7 @@ function AgendaPage() {
                   <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center justify-between">
                     {titulo}<Badge variant="secondary">{lista.length}</Badge>
                   </CardTitle></CardHeader>
-                  <CardContent className="space-y-2 pt-0">
+                  <CardContent className="space-y-2 pt-0 max-h-[680px] overflow-y-auto overscroll-contain pr-2">
                     {lista.length === 0 && <p className="text-xs text-muted-foreground py-1">Nada por aqui</p>}
                     {lista.map((t) => (
                       <TaskCard key={t.id} t={t} onToggle={toggle} onEdit={(t) => { setEditing(t); setModalOpen(true); }} onDelete={remove} onReschedule={reschedule} onLeadClick={setSelectedLeadId} />
@@ -469,7 +473,7 @@ function AgendaPage() {
                   <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center justify-between">
                     {titulo}<Badge variant="secondary">{lista.length}</Badge>
                   </CardTitle></CardHeader>
-                  <CardContent className="space-y-2 pt-0">
+                  <CardContent className="space-y-2 pt-0 max-h-[680px] overflow-y-auto overscroll-contain pr-2">
                     {lista.length === 0 && <p className="text-xs text-muted-foreground py-1">Nada por aqui</p>}
                     {lista.map((t) => (
                       <TaskCard key={t.id} t={t} onToggle={toggle} onEdit={(t) => { setEditing(t); setModalOpen(true); }} onDelete={remove} onReschedule={reschedule} onLeadClick={setSelectedLeadId} />
