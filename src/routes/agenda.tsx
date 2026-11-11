@@ -68,7 +68,7 @@ function TaskCard({ t, onToggle, onEdit, onDelete, onReschedule, onLeadClick }: 
             overdue ? <Badge className="bg-destructive text-destructive-foreground">⚠️ Atrasada</Badge> :
             <Badge variant="outline">Pendente</Badge>}
         </div>
-        <div className="text-xs text-muted-foreground">{t.tipo} · {t.cliente}</div>
+        <div className="text-xs text-muted-foreground">{t.tipo} · {t.cliente || "Sem lead vinculado"}</div>
         <div className="text-xs text-muted-foreground">
           {localDate(t.data).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
         </div>
@@ -128,16 +128,15 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
 
   const submit = () => {
     const linked = leads.find(l=>l.id===form.lead_id);
-    if (!form.titulo?.trim() || !linked) { toast.error("Preencha o título e selecione um lead"); return; }
+    if (!form.titulo?.trim()) { toast.error("Preencha o título da tarefa"); return; }
     if (!form.data || !Number.isFinite(localDate(form.data).getTime())) { toast.error("Informe uma data válida"); return; }
     const t: Tarefa = {
       id: initial?.id ?? crypto.randomUUID(),
       titulo: form.titulo,
       tipo: (form.tipo as TarefaTipo) ?? "Outro",
-      cliente: linked.nome,
-      lead_id: linked.id,
-
-      leadId: linked.id,
+      cliente: linked?.nome ?? "",
+      lead_id: linked?.id ?? "",
+      leadId: linked?.id,
       data: form.data ?? new Date().toISOString(),
       concluida: initial?.concluida ?? false,
       prioridade: form.prioridade as TarefaPrioridade,
@@ -168,9 +167,12 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
             <Input value={form.titulo ?? ""} onChange={(e) => updateDraft({ ...form, titulo: e.target.value })} />
           </div>
           <div>
-            <Label>Lead</Label>
+            <Label>Lead (opcional)</Label>
             <Input aria-label="Buscar lead da tarefa" placeholder="Buscar por nome ou telefone" value={leadSearch} onChange={e=>updateLeadSearch(e.target.value)} />
-            <Select value={form.lead_id} onValueChange={v=>updateDraft({...form,lead_id:v})}><SelectTrigger aria-label="Lead da tarefa"><SelectValue placeholder="Selecione um lead" /></SelectTrigger><SelectContent>{leads.filter(l=>l.nome.toLowerCase().includes(leadSearch.toLowerCase())||l.telefone.includes(leadSearch)).map(l=><SelectItem key={l.id} value={l.id}>{l.nome} · {l.telefone}</SelectItem>)}</SelectContent></Select>
+            <div className="flex items-center gap-2">
+              <Select value={form.lead_id || undefined} onValueChange={v=>updateDraft({...form,lead_id:v})}><SelectTrigger aria-label="Lead da tarefa"><SelectValue placeholder="Sem lead vinculado" /></SelectTrigger><SelectContent>{leads.filter(l=>l.nome.toLowerCase().includes(leadSearch.toLowerCase())||l.telefone.includes(leadSearch)).map(l=><SelectItem key={l.id} value={l.id}>{l.nome} · {l.telefone}</SelectItem>)}</SelectContent></Select>
+              {form.lead_id && <Button type="button" size="sm" variant="ghost" onClick={()=>updateDraft({...form,lead_id:undefined})}>Remover</Button>}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
