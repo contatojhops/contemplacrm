@@ -2,13 +2,14 @@ import { Button } from "@/components/ui/button";
 import { localDate } from "@/lib/crm";
 import { FEATURES } from "@/lib/features";
 import { MobileNavigation } from "./MobileNavigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Settings, CalendarClock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Bell, Search, Settings, CalendarClock, AlertCircle, CheckCircle2, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLeads, useClientes, usePropostas, useTarefas } from "@/lib/store";
+import { getCloudUser } from "@/lib/cloudStore";
 
 type NotificationItem = {
   id: string;
@@ -25,6 +26,25 @@ export function TopNavbar() {
   const [tarefas] = useTarefas();
   const [q, setQ] = useState("");
   const navigate = useNavigate();
+  const userId = getCloudUser();
+  const readStorageKey = `contemplacrm:read-notifications:${userId ?? "anonymous"}`;
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(readStorageKey);
+      const parsed: unknown = stored ? JSON.parse(stored) : [];
+      setReadNotificationIds(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+    } catch {
+      setReadNotificationIds([]);
+    }
+  }, [readStorageKey]);
+
+  const markAsRead = (id: string) => {
+    const next = readNotificationIds.includes(id) ? readNotificationIds : [...readNotificationIds, id];
+    try { localStorage.setItem(readStorageKey, JSON.stringify(next)); } catch { /* Keep the current session usable if storage is unavailable. */ }
+    setReadNotificationIds(next);
+  };
 
   const results = useMemo(() => {
     if (!q.trim()) return [];
@@ -42,7 +62,7 @@ export function TopNavbar() {
     return out.slice(0, 8);
   }, [q, leads, clientes, propostas]);
 
-  const notifications = useMemo<NotificationItem[]>(() => {
+  const allNotifications = useMemo<NotificationItem[]>(() => {
     const now = new Date();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
@@ -64,7 +84,7 @@ export function TopNavbar() {
           ? due.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
           : "Hoje";
         return {
-          id: task.id,
+          id: `task-${task.id}-${task.data}`,
           title: task.titulo,
           detail: `${leadName} · ${dateLabel} às ${time}`,
           overdue,
@@ -83,15 +103,17 @@ export function TopNavbar() {
       .map((lead) => {
         const days = Math.floor((now.getTime() - localDate(lead.ultimoContato).getTime()) / 86400000);
         return {
-          id: `stale-${lead.id}`,
+          id: `stale-${lead.id}-${lead.ultimoContato}`,
           title: `Retomar contato com ${lead.nome}`,
           detail: `Sem contato há ${days} dias · ${lead.etapa}`,
           overdue: true,
         };
       });
 
-    return [...taskNotifications, ...staleLeadNotifications].slice(0, 12);
+    return [...taskNotifications, ...staleLeadNotifications];
   }, [leads, tarefas]);
+
+  const notifications = allNotifications.filter((item) => !readNotificationIds.includes(item.id)).slice(0, 12);
 
   const openAgenda = () => navigate({ to: "/agenda" });
 
@@ -128,7 +150,7 @@ export function TopNavbar() {
           <div className="px-3 py-3 border-b border-border/70 flex items-center justify-between gap-2">
             <div>
               <div className="text-sm font-semibold">Sua rotina</div>
-              <div className="text-xs text-muted-foreground">{notifications.length} item(ns) exigem atenção</div>
+              <div className="text-xs text-muted-foreground">{notifications.length} alerta(s) não lido(s)</div>
             </div>
             <Badge variant={notifications.some((item) => item.overdue) ? "destructive" : "secondary"}>{notifications.length}</Badge>
           </div>
@@ -136,20 +158,26 @@ export function TopNavbar() {
             {notifications.length === 0 && (
               <div className="p-5 text-center">
                 <CheckCircle2 className="h-6 w-6 mx-auto mb-2 text-success" />
-                <p className="text-sm font-medium">Tudo em dia!</p>
-                <p className="text-xs text-muted-foreground mt-1">Não há tarefas para hoje ou atrasadas.</p>
+                <p className="text-sm font-medium">{allNotifications.length > 0 ? "Você já visualizou todos os alertas." : "Tudo em dia!"}</p>
+                <p className="text-xs text-muted-foreground mt-1">{allNotifications.length > 0 ? "Novos alertas aparecerão aqui quando surgirem." : "Não há tarefas para hoje ou atrasadas."}</p>
               </div>
             )}
             {notifications.map((item) => (
-              <button key={item.id} type="button" onClick={openAgenda} className="w-full px-3 py-3 text-left border-b border-border/60 last:border-0 hover:bg-accent/70 transition-colors flex items-start gap-2">
-                {item.overdue ? <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" /> : <CalendarClock className="h-4 w-4 mt-0.5 text-primary shrink-0" />}
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium leading-snug">{item.title}</span>
-                  <span className="block text-xs text-muted-foreground mt-1">{item.detail}</span>
-                  {item.priority && <span className="block text-[11px] text-muted-foreground mt-1">Prioridade: {item.priority}</span>}
-                </span>
-                {item.overdue && <Badge variant="destructive" className="shrink-0">Atrasada</Badge>}
-              </button>
+              <div key={item.id} className="w-full px-3 py-3 text-left border-b border-border/60 last:border-0 hover:bg-accent/40 transition-colors flex items-start gap-2">
+                <button type="button" onClick={openAgenda} className="min-w-0 flex-1 text-left flex items-start gap-2">
+                  {item.overdue ? <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" /> : <CalendarClock className="h-4 w-4 mt-0.5 text-primary shrink-0" />}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium leading-snug">{item.title}</span>
+                    <span className="block text-xs text-muted-foreground mt-1">{item.detail}</span>
+                    {item.priority && <span className="block text-[11px] text-muted-foreground mt-1">Prioridade: {item.priority}</span>}
+                  </span>
+                  {item.overdue && <Badge variant="destructive" className="shrink-0">Atrasada</Badge>}
+                </button>
+                <Button type="button" variant="ghost" size="sm" className="h-7 px-2 shrink-0 text-xs whitespace-nowrap" aria-label="Marcar alerta como lido" title="Marcar como lido" onClick={() => markAsRead(item.id)}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  Marcar como lido
+                </Button>
+              </div>
             ))}
           </div>
           <div className="p-2 border-t border-border/70">

@@ -286,22 +286,28 @@ function AgendaPage() {
     if (!task) return;
     const completed = !task.concluida;
     setTarefas(prev => prev.map(t => t.id === id ? { ...t, concluida: completed } : t));
-    if (task.proximaAcaoId) {
+    const contactTaskTypes = ["Ligação", "WhatsApp", "Reunião", "E-mail", "Visita", "Follow-up", "Recontato"];
+    const linkedLeadId = task.lead_id || task.leadId;
+    const registersContact = completed && contactTaskTypes.includes(task.tipo);
+    if (task.proximaAcaoId || registersContact) {
+      const completedAt = new Date().toISOString();
       setLeads(prev => prev.map(lead => {
-        if (lead.id !== task.lead_id) return lead;
+        if (lead.id !== linkedLeadId) return lead;
         const details = lead.detalhesCliente ?? {};
+        let updatedLead = registersContact ? { ...lead, ultimoContato: completedAt } : lead;
+        if (!task.proximaAcaoId) return updatedLead;
         if (completed) {
           const action = details.proximaAcao;
-          if (!action || action.id !== task.proximaAcaoId) return lead;
-          return { ...lead, detalhesCliente: {
+          if (!action || action.id !== task.proximaAcaoId) return updatedLead;
+          return { ...updatedLead, detalhesCliente: {
             ...details,
             proximaAcao: undefined,
-            acoesConcluidas: [...(details.acoesConcluidas ?? []), { id: action.id, data: new Date().toISOString(), tipo: action.tipo, descricao: action.descricao }],
+            acoesConcluidas: [...(details.acoesConcluidas ?? []), { id: action.id, data: completedAt, tipo: action.tipo, descricao: action.descricao }],
           } };
         }
         const date = localDate(task.data);
         const hora = date.toTimeString().slice(0, 5);
-        return { ...lead, detalhesCliente: {
+        return { ...updatedLead, detalhesCliente: {
           ...details,
           proximaAcao: { id: task.proximaAcaoId, data: task.data, hora, tipo: task.tipo, descricao: task.descricao ?? task.titulo },
           acoesConcluidas: (details.acoesConcluidas ?? []).filter(action => action.id !== task.proximaAcaoId),
