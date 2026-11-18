@@ -173,8 +173,9 @@ export function TopNavbar() {
                   </span>
                   {item.overdue && <Badge variant="destructive" className="shrink-0">Atrasada</Badge>}
                 </button>
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Marcar alerta como lido" title="Marcar como lido" onClick={() => markAsRead(item.id)}>
-                  <Check className="h-4 w-4" />
+                <Button type="button" variant="ghost" size="sm" className="h-7 px-2 shrink-0 text-xs whitespace-nowrap" aria-label="Marcar alerta como lido" title="Marcar como lido" onClick={() => markAsRead(item.id)}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  Marcar como lido
                 </Button>
               </div>
             ))}
