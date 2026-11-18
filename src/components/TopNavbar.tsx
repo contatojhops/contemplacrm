@@ -40,9 +40,6 @@ export function TopNavbar() {
   }, [readStorageKey]);
 
   const markAsRead = (id: string) => {
-    setReadNotificationIds((current) => {
-      return current.includes(id) ? current : [...current, id];
-    });
     const next = readNotificationIds.includes(id) ? readNotificationIds : [...readNotificationIds, id];
     try { localStorage.setItem(readStorageKey, JSON.stringify(next)); } catch { /* Keep the current session usable if storage is unavailable. */ }
     setReadNotificationIds(next);
