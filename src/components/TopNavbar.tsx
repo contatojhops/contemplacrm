@@ -41,10 +41,11 @@ export function TopNavbar() {
 
   const markAsRead = (id: string) => {
     setReadNotificationIds((current) => {
-      const next = current.includes(id) ? current : [...current, id];
-      try { localStorage.setItem(readStorageKey, JSON.stringify(next)); } catch { /* Keep the current session usable if storage is unavailable. */ }
-      return next;
+      return current.includes(id) ? current : [...current, id];
     });
+    const next = readNotificationIds.includes(id) ? readNotificationIds : [...readNotificationIds, id];
+    try { localStorage.setItem(readStorageKey, JSON.stringify(next)); } catch { /* Keep the current session usable if storage is unavailable. */ }
+    setReadNotificationIds(next);
   };
 
   const results = useMemo(() => {
@@ -111,10 +112,10 @@ export function TopNavbar() {
         };
       });
 
-    return [...taskNotifications, ...staleLeadNotifications].slice(0, 12);
+    return [...taskNotifications, ...staleLeadNotifications];
   }, [leads, tarefas]);
 
-  const notifications = allNotifications.filter((item) => !readNotificationIds.includes(item.id));
+  const notifications = allNotifications.filter((item) => !readNotificationIds.includes(item.id)).slice(0, 12);
 
   const openAgenda = () => navigate({ to: "/agenda" });
 
