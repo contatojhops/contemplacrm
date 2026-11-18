@@ -33,7 +33,8 @@ export function TopNavbar() {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(readStorageKey);
-      setReadNotificationIds(stored ? JSON.parse(stored) as string[] : []);
+      const parsed: unknown = stored ? JSON.parse(stored) : [];
+      setReadNotificationIds(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
     } catch {
       setReadNotificationIds([]);
     }
