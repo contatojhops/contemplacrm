@@ -169,16 +169,16 @@ export function TopNavbar() {
               <div className="text-sm font-semibold">Sua rotina</div>
               <div className="text-xs text-muted-foreground">{notifications.length} alerta(s) não lido(s)</div>
             </div>
-            <Badge variant={notifications.some((item) => item.overdue) ? "destructive" : "secondary"}>{notifications.length}</Badge>
-          </div>
-          {notifications.length > 0 && (
-            <div className="px-3 py-2 border-b border-border/60 flex justify-end">
-              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={markAllAsRead}>
-                <Check className="h-3.5 w-3.5 mr-1" />
-                Marcar todas como lidas
-              </Button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {notifications.length > 0 && (
+                <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={markAllAsRead}>
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  Marcar todas como lidas
+                </Button>
+              )}
+              <Badge variant={notifications.some((item) => item.overdue) ? "destructive" : "secondary"}>{notifications.length}</Badge>
             </div>
-          )}
+          </div>
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 && (
               <div className="p-5 text-center">
