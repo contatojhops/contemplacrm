@@ -45,7 +45,8 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
       ref={setNodeRef}
       style={style}
       data-kanban-drag="true"
-      className="kanban-lead-card bg-card border border-border rounded-lg p-3 shadow-sm space-y-2 cursor-grab active:cursor-grabbing"
+      data-lead-id={lead.id}
+      className={`kanban-lead-card bg-card border border-border rounded-lg p-3 shadow-sm space-y-2 cursor-grab active:cursor-grabbing ${lead.id === focusLeadId ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
       {...attributes}
       {...listeners}
     >
