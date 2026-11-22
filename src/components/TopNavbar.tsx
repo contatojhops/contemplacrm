@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { localDate } from "@/lib/crm";
 import { FEATURES } from "@/lib/features";
 import { MobileNavigation } from "./MobileNavigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Bell, Search, Settings, CalendarClock, AlertCircle, CheckCircle2, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ export function TopNavbar() {
   const [propostas] = usePropostas();
   const [tarefas] = useTarefas();
   const [q, setQ] = useState("");
+  const [showMarkAllTooltip, setShowMarkAllTooltip] = useState(false);
+  const markAllTooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
   const userId = getCloudUser();
   const readStorageKey = `contemplacrm:read-notifications:${userId ?? "anonymous"}`;
@@ -171,10 +173,34 @@ export function TopNavbar() {
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               {notifications.length > 0 && (
-                <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={markAllAsRead}>
-                  <Check className="h-3.5 w-3.5 mr-1" />
-                  Marcar todas como lidas
-                </Button>
+                <div
+                  className="relative"
+                  onMouseEnter={() => {
+                    if (markAllTooltipTimer.current) clearTimeout(markAllTooltipTimer.current);
+                    setShowMarkAllTooltip(true);
+                    markAllTooltipTimer.current = setTimeout(() => setShowMarkAllTooltip(false), 3000);
+                  }}
+                  onMouseLeave={() => {
+                    if (markAllTooltipTimer.current) clearTimeout(markAllTooltipTimer.current);
+                    setShowMarkAllTooltip(false);
+                  }}
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    aria-label="Marcar todas como lidas"
+                    onClick={markAllAsRead}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  {showMarkAllTooltip && (
+                    <span role="tooltip" className="absolute right-0 top-full z-50 mt-1 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[11px] text-popover-foreground shadow-lg">
+                      Marcar todas como lidas
+                    </span>
+                  )}
+                </div>
               )}
               <Badge variant={notifications.some((item) => item.overdue) ? "destructive" : "secondary"}>{notifications.length}</Badge>
             </div>
