@@ -117,6 +117,7 @@ export function TopNavbar() {
     return [...taskNotifications, ...staleLeadNotifications];
   }, [leads, tarefas]);
 
+  const openAgenda = () => navigate({ to: "/agenda" });
   const notifications = allNotifications.filter((item) => !readNotificationIds.includes(item.id));
   const notificationCountLabel = notifications.length > 99 ? "99+" : String(notifications.length);
   const openNotification = (item: NotificationItem) => {
@@ -127,7 +128,6 @@ export function TopNavbar() {
     openAgenda();
   };
 
-  const openAgenda = () => navigate({ to: "/agenda" });
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-border/70 bg-background/85 backdrop-blur-xl flex items-center gap-3 px-4 lg:px-7">
