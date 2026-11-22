@@ -30,7 +30,7 @@ import { getStageHeaderStyle } from "@/lib/stageColors";
 
 
 
-function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPipeline, stageColor, focusedLeadId }: { pipelines: Pipeline[]; showPipeline: boolean; focusedLeadId: string | null; onTransfer: (l: Lead) => void; etapa: Etapa; leads: Lead[]; onEdit: (l: Lead) => void; onAdvance: (l: Lead) => void; stageColor?: string; focusedLeadId: string | null; }) {
+function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPipeline, stageColor, focusedLeadId }: { pipelines: Pipeline[]; showPipeline: boolean; focusedLeadId: string | null; onTransfer: (l: Lead) => void; etapa: Etapa; leads: Lead[]; onEdit: (l: Lead) => void; onAdvance: (l: Lead) => void; stageColor?: string; }) {
   const { setNodeRef, isOver } = useDroppable({ id: etapa });
   const total = leads.reduce((s, l) => s + l.valorCarta, 0);
   const headerStyle = getStageHeaderStyle(etapa, stageColor);
