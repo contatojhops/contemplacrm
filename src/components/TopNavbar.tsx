@@ -120,6 +120,11 @@ export function TopNavbar() {
   const openAgenda = () => navigate({ to: "/agenda" });
   const notifications = allNotifications.filter((item) => !readNotificationIds.includes(item.id));
   const notificationCountLabel = notifications.length > 99 ? "99+" : String(notifications.length);
+  const markAllAsRead = () => {
+    const next = [...new Set([...readNotificationIds, ...notifications.map((item) => item.id)])];
+    try { localStorage.setItem(readStorageKey, JSON.stringify(next)); } catch { /* Keep the current session usable if storage is unavailable. */ }
+    setReadNotificationIds(next);
+  };
   const openNotification = (item: NotificationItem) => {
     if (item.leadId && item.pipelineId) {
       navigate({ to: "/pipeline/$id", params: { id: item.pipelineId }, search: { leadId: item.leadId } as never });
@@ -166,6 +171,14 @@ export function TopNavbar() {
             </div>
             <Badge variant={notifications.some((item) => item.overdue) ? "destructive" : "secondary"}>{notifications.length}</Badge>
           </div>
+          {notifications.length > 0 && (
+            <div className="px-3 py-2 border-b border-border/60 flex justify-end">
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground" onClick={markAllAsRead}>
+                <Check className="h-3.5 w-3.5 mr-1" />
+                Marcar todas como lidas
+              </Button>
+            </div>
+          )}
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 && (
               <div className="p-5 text-center">
