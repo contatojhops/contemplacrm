@@ -17,6 +17,8 @@ type NotificationItem = {
   detail: string;
   overdue: boolean;
   priority?: string;
+  leadId?: string;
+  pipelineId?: string;
 };
 
 export function TopNavbar() {
@@ -107,13 +109,23 @@ export function TopNavbar() {
           title: `Retomar contato com ${lead.nome}`,
           detail: `Sem contato há ${days} dias · ${lead.etapa}`,
           overdue: true,
+          leadId: lead.id,
+          pipelineId: lead.pipeline_id,
         };
       });
 
     return [...taskNotifications, ...staleLeadNotifications];
   }, [leads, tarefas]);
 
-  const notifications = allNotifications.filter((item) => !readNotificationIds.includes(item.id)).slice(0, 12);
+  const notifications = allNotifications.filter((item) => !readNotificationIds.includes(item.id));
+  const notificationCountLabel = notifications.length > 99 ? "99+" : String(notifications.length);
+  const openNotification = (item: NotificationItem) => {
+    if (item.leadId && item.pipelineId) {
+      navigate({ to: "/pipeline/$id", params: { id: item.pipelineId }, search: { leadId: item.leadId } as never });
+      return;
+    }
+    openAgenda();
+  };
 
   const openAgenda = () => navigate({ to: "/agenda" });
 
@@ -142,7 +154,7 @@ export function TopNavbar() {
           <Button aria-label="Notificações" variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-accent flex items-center justify-center">
             <Bell className="h-4 w-4" />
             {notifications.length > 0 && (
-              <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{notifications.length}</span>
+              <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{notificationCountLabel}</span>
             )}
           </Button>
         </PopoverTrigger>
@@ -163,8 +175,8 @@ export function TopNavbar() {
               </div>
             )}
             {notifications.map((item) => (
-              <div key={item.id} className="w-full px-3 py-3 text-left border-b border-border/60 last:border-0 hover:bg-accent/40 transition-colors flex items-start gap-2">
-                <button type="button" onClick={openAgenda} className="min-w-0 flex-1 text-left flex items-start gap-2">
+              <div key={item.id} className="w-full px-3 py-3 border-b border-border/60 last:border-0 hover:bg-accent/40 transition-colors flex flex-col gap-2">
+                <button type="button" onClick={() => openNotification(item)} className="w-full min-w-0 text-left flex items-start gap-2">
                   {item.overdue ? <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" /> : <CalendarClock className="h-4 w-4 mt-0.5 text-primary shrink-0" />}
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium leading-snug">{item.title}</span>
@@ -173,10 +185,12 @@ export function TopNavbar() {
                   </span>
                   {item.overdue && <Badge variant="destructive" className="shrink-0">Atrasada</Badge>}
                 </button>
-                <Button type="button" variant="ghost" size="sm" className="h-7 px-2 shrink-0 text-xs whitespace-nowrap" aria-label="Marcar alerta como lido" title="Marcar como lido" onClick={() => markAsRead(item.id)}>
-                  <Check className="h-3.5 w-3.5 mr-1" />
-                  Marcar como lido
-                </Button>
+                <div className="flex justify-end">
+                  <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" aria-label="Marcar alerta como lido" title="Marcar como lido" onClick={() => markAsRead(item.id)}>
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                    Marcar como lido
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
