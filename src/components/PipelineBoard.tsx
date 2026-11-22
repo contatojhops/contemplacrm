@@ -30,7 +30,7 @@ import { getStageHeaderStyle } from "@/lib/stageColors";
 
 
 
-function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPipeline, stageColor }: { pipelines: Pipeline[]; showPipeline: boolean; onTransfer: (l: Lead) => void; etapa: Etapa; leads: Lead[]; onEdit: (l: Lead) => void; onAdvance: (l: Lead) => void; stageColor?: string; }) {
+function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPipeline, stageColor, focusedLeadId }: { pipelines: Pipeline[]; showPipeline: boolean; focusedLeadId: string | null; onTransfer: (l: Lead) => void; etapa: Etapa; leads: Lead[]; onEdit: (l: Lead) => void; onAdvance: (l: Lead) => void; stageColor?: string; focusedLeadId: string | null; }) {
   const { setNodeRef, isOver } = useDroppable({ id: etapa });
   const total = leads.reduce((s, l) => s + l.valorCarta, 0);
   const headerStyle = getStageHeaderStyle(etapa, stageColor);
@@ -50,7 +50,7 @@ function Column({ etapa, leads, onEdit, onAdvance, onTransfer, pipelines, showPi
         className={`kanban-column-body flex-1 min-h-[200px] bg-muted/40 border border-t-0 border-border rounded-b-lg p-2 space-y-2 ${isOver ? "bg-accent" : ""}`}
       >
         <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-          {leads.map((l) => <LeadCard key={l.id} lead={l} onEdit={onEdit} onAdvance={onAdvance} onTransfer={onTransfer} pipeline={pipelines.find(p=>p.id===l.pipeline_id)} showPipeline={showPipeline} />)}
+          {leads.map((l) => <LeadCard key={l.id} lead={l} onEdit={onEdit} onAdvance={onAdvance} onTransfer={onTransfer} pipeline={pipelines.find(p=>p.id===l.pipeline_id)} showPipeline={showPipeline} focused={l.id === focusedLeadId} />)}
         </SortableContext>
       </div>
     </div>
@@ -80,6 +80,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const [leads, setLeads] = useLeads();
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [search, setSearch] = useState("");
+  const [focusLeadId, setFocusLeadId] = useState<string | null>(null);
   const [filterProduto, setFilterProduto] = useState<string>("all");
   const [filterOrigem, setFilterOrigem] = useState<string>("all");
   const [filterEtapa, setFilterEtapa] = useState<string>("all");
@@ -209,6 +210,33 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     if (filterPipeline !== "all" && l.pipeline_id !== filterPipeline) return false;
     return true;
   }), [leads, search, filterProduto, filterOrigem, filterEtapa, filterTemperatura, filterPipeline, pipelineId, period, customStart, customEnd]);
+
+  useEffect(() => {
+    const targetLeadId = new URLSearchParams(window.location.search).get("leadId");
+    if (!targetLeadId) return;
+    const targetLead = leads.find(lead => lead.id === targetLeadId);
+    if (!targetLead || (pipelineId && targetLead.pipeline_id !== pipelineId)) return;
+    setFocusLeadId(targetLeadId);
+    setView("kanban");
+    setPeriod("todos");
+    setCustomStart("");
+    setCustomEnd("");
+    setSearch(targetLead.nome);
+    setFilterProduto("all");
+    setFilterOrigem("all");
+    setFilterEtapa("all");
+    setFilterTemperatura("all");
+    setFilterPipeline("all");
+  }, [leads, pipelineId]);
+
+  useEffect(() => {
+    if (!focusLeadId || view !== "kanban" || !filtered.some(lead => lead.id === focusLeadId)) return;
+    const targetCard = Array.from(document.querySelectorAll<HTMLElement>("[data-lead-id]"))
+      .find(element => element.dataset.leadId === focusLeadId);
+    if (!targetCard) return;
+    targetCard.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [focusLeadId, filtered, view]);
 
   const sortedLeads = useMemo(() => [...filtered].sort((a,b) => {
     const rank = (value?: string) => value === "Quente" ? 3 : value === "Frio" ? 1 : 2;
@@ -465,6 +493,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
                     onAdvance={handleAdvance}
                     pipelines={pipelines} showPipeline={!pipelineId}
                     onTransfer={l=>{setTransfer(l);setDestination("");}}
+                    focusedLeadId={focusLeadId}
                   />
                 ))}
               </div>
