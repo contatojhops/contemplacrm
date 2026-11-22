@@ -29,9 +29,10 @@ export interface LeadCardProps {
   onTransfer?: (l: Lead) => void;
   pipeline?: Pipeline;
   showPipeline?: boolean;
+  focused?: boolean;
 }
 
-export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPipeline }: LeadCardProps) {
+export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPipeline, focused }: LeadCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -45,7 +46,8 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
       ref={setNodeRef}
       style={style}
       data-kanban-drag="true"
-      className="kanban-lead-card bg-card border border-border rounded-lg p-3 shadow-sm space-y-2 cursor-grab active:cursor-grabbing"
+      data-lead-id={lead.id}
+      className={`kanban-lead-card bg-card border border-border rounded-lg p-3 shadow-sm space-y-2 cursor-grab active:cursor-grabbing ${focused ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
       {...attributes}
       {...listeners}
     >

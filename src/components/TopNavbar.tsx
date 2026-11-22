@@ -2,13 +2,14 @@ import { Button } from "@/components/ui/button";
 import { localDate } from "@/lib/crm";
 import { FEATURES } from "@/lib/features";
 import { MobileNavigation } from "./MobileNavigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Bell, Search, Settings, CalendarClock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Bell, Search, Settings, CalendarClock, AlertCircle, CheckCircle2, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLeads, useClientes, usePropostas, useTarefas } from "@/lib/store";
+import { getCloudUser } from "@/lib/cloudStore";
 
 type NotificationItem = {
   id: string;
@@ -16,6 +17,8 @@ type NotificationItem = {
   detail: string;
   overdue: boolean;
   priority?: string;
+  leadId?: string;
+  pipelineId?: string;
 };
 
 export function TopNavbar() {
@@ -24,7 +27,28 @@ export function TopNavbar() {
   const [propostas] = usePropostas();
   const [tarefas] = useTarefas();
   const [q, setQ] = useState("");
+  const [showMarkAllTooltip, setShowMarkAllTooltip] = useState(false);
+  const markAllTooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
+  const userId = getCloudUser();
+  const readStorageKey = `contemplacrm:read-notifications:${userId ?? "anonymous"}`;
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(readStorageKey);
+      const parsed: unknown = stored ? JSON.parse(stored) : [];
+      setReadNotificationIds(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+    } catch {
+      setReadNotificationIds([]);
+    }
+  }, [readStorageKey]);
+
+  const markAsRead = (id: string) => {
+    const next = readNotificationIds.includes(id) ? readNotificationIds : [...readNotificationIds, id];
+    try { localStorage.setItem(readStorageKey, JSON.stringify(next)); } catch { /* Keep the current session usable if storage is unavailable. */ }
+    setReadNotificationIds(next);
+  };
 
   const results = useMemo(() => {
     if (!q.trim()) return [];
@@ -42,7 +66,7 @@ export function TopNavbar() {
     return out.slice(0, 8);
   }, [q, leads, clientes, propostas]);
 
-  const notifications = useMemo<NotificationItem[]>(() => {
+  const allNotifications = useMemo<NotificationItem[]>(() => {
     const now = new Date();
     const today = new Date(now);
     today.setHours(0, 0, 0, 0);
@@ -64,7 +88,7 @@ export function TopNavbar() {
           ? due.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
           : "Hoje";
         return {
-          id: task.id,
+          id: `task-${task.id}-${task.data}`,
           title: task.titulo,
           detail: `${leadName} · ${dateLabel} às ${time}`,
           overdue,
@@ -83,17 +107,34 @@ export function TopNavbar() {
       .map((lead) => {
         const days = Math.floor((now.getTime() - localDate(lead.ultimoContato).getTime()) / 86400000);
         return {
-          id: `stale-${lead.id}`,
+          id: `stale-${lead.id}-${lead.ultimoContato}`,
           title: `Retomar contato com ${lead.nome}`,
           detail: `Sem contato há ${days} dias · ${lead.etapa}`,
           overdue: true,
+          leadId: lead.id,
+          pipelineId: lead.pipeline_id,
         };
       });
 
-    return [...taskNotifications, ...staleLeadNotifications].slice(0, 12);
+    return [...taskNotifications, ...staleLeadNotifications];
   }, [leads, tarefas]);
 
   const openAgenda = () => navigate({ to: "/agenda" });
+  const notifications = allNotifications.filter((item) => !readNotificationIds.includes(item.id));
+  const notificationCountLabel = notifications.length > 99 ? "99+" : String(notifications.length);
+  const markAllAsRead = () => {
+    const next = [...new Set([...readNotificationIds, ...notifications.map((item) => item.id)])];
+    try { localStorage.setItem(readStorageKey, JSON.stringify(next)); } catch { /* Keep the current session usable if storage is unavailable. */ }
+    setReadNotificationIds(next);
+  };
+  const openNotification = (item: NotificationItem) => {
+    if (item.leadId && item.pipelineId) {
+      navigate({ to: "/pipeline/$id", params: { id: item.pipelineId }, search: { leadId: item.leadId } as never });
+      return;
+    }
+    openAgenda();
+  };
+
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-border/70 bg-background/85 backdrop-blur-xl flex items-center gap-3 px-4 lg:px-7">
@@ -120,7 +161,7 @@ export function TopNavbar() {
           <Button aria-label="Notificações" variant="ghost" size="icon" className="relative h-10 w-10 rounded-xl hover:bg-accent flex items-center justify-center">
             <Bell className="h-4 w-4" />
             {notifications.length > 0 && (
-              <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{notifications.length}</span>
+              <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">{notificationCountLabel}</span>
             )}
           </Button>
         </PopoverTrigger>
@@ -128,28 +169,68 @@ export function TopNavbar() {
           <div className="px-3 py-3 border-b border-border/70 flex items-center justify-between gap-2">
             <div>
               <div className="text-sm font-semibold">Sua rotina</div>
-              <div className="text-xs text-muted-foreground">{notifications.length} item(ns) exigem atenção</div>
+              <div className="text-xs text-muted-foreground">{notifications.length} alerta(s) não lido(s)</div>
             </div>
-            <Badge variant={notifications.some((item) => item.overdue) ? "destructive" : "secondary"}>{notifications.length}</Badge>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {notifications.length > 0 && (
+                <div
+                  className="relative"
+                  onMouseEnter={() => {
+                    if (markAllTooltipTimer.current) clearTimeout(markAllTooltipTimer.current);
+                    setShowMarkAllTooltip(true);
+                    markAllTooltipTimer.current = setTimeout(() => setShowMarkAllTooltip(false), 3000);
+                  }}
+                  onMouseLeave={() => {
+                    if (markAllTooltipTimer.current) clearTimeout(markAllTooltipTimer.current);
+                    setShowMarkAllTooltip(false);
+                  }}
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    aria-label="Marcar todas como lidas"
+                    onClick={markAllAsRead}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  {showMarkAllTooltip && (
+                    <span role="tooltip" className="absolute right-0 top-full z-50 mt-1 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[11px] text-popover-foreground shadow-lg">
+                      Marcar todas como lidas
+                    </span>
+                  )}
+                </div>
+              )}
+              <Badge variant={notifications.some((item) => item.overdue) ? "destructive" : "secondary"}>{notifications.length}</Badge>
+            </div>
           </div>
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 && (
               <div className="p-5 text-center">
                 <CheckCircle2 className="h-6 w-6 mx-auto mb-2 text-success" />
-                <p className="text-sm font-medium">Tudo em dia!</p>
-                <p className="text-xs text-muted-foreground mt-1">Não há tarefas para hoje ou atrasadas.</p>
+                <p className="text-sm font-medium">{allNotifications.length > 0 ? "Você já visualizou todos os alertas." : "Tudo em dia!"}</p>
+                <p className="text-xs text-muted-foreground mt-1">{allNotifications.length > 0 ? "Novos alertas aparecerão aqui quando surgirem." : "Não há tarefas para hoje ou atrasadas."}</p>
               </div>
             )}
             {notifications.map((item) => (
-              <button key={item.id} type="button" onClick={openAgenda} className="w-full px-3 py-3 text-left border-b border-border/60 last:border-0 hover:bg-accent/70 transition-colors flex items-start gap-2">
-                {item.overdue ? <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" /> : <CalendarClock className="h-4 w-4 mt-0.5 text-primary shrink-0" />}
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium leading-snug">{item.title}</span>
-                  <span className="block text-xs text-muted-foreground mt-1">{item.detail}</span>
-                  {item.priority && <span className="block text-[11px] text-muted-foreground mt-1">Prioridade: {item.priority}</span>}
-                </span>
-                {item.overdue && <Badge variant="destructive" className="shrink-0">Atrasada</Badge>}
-              </button>
+              <div key={item.id} className="w-full px-3 py-3 border-b border-border/60 last:border-0 hover:bg-accent/40 transition-colors flex flex-col gap-2">
+                <button type="button" onClick={() => openNotification(item)} className="w-full min-w-0 text-left flex items-start gap-2">
+                  {item.overdue ? <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" /> : <CalendarClock className="h-4 w-4 mt-0.5 text-primary shrink-0" />}
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium leading-snug">{item.title}</span>
+                    <span className="block text-xs text-muted-foreground mt-1">{item.detail}</span>
+                    {item.priority && <span className="block text-[11px] text-muted-foreground mt-1">Prioridade: {item.priority}</span>}
+                  </span>
+                  {item.overdue && <Badge variant="destructive" className="shrink-0">Atrasada</Badge>}
+                </button>
+                <div className="flex justify-end">
+                  <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" aria-label="Marcar alerta como lido" title="Marcar como lido" onClick={() => markAsRead(item.id)}>
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                    Marcar como lido
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
           <div className="p-2 border-t border-border/70">
