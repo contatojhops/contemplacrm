@@ -67,7 +67,7 @@ export function FloatingActionButton() {
       </Button>
       <LeadModal open={leadModalOpen} onOpenChange={setLeadModalOpen} defaultPipelineId={defaultPipelineId} onSave={handleSaveLead} />
       <QuickTaskModal open={taskModalOpen} onOpenChange={setTaskModalOpen} leads={leads} onSave={handleSaveTask} />
-      <QuickInteractionModal open={interactionModalOpen} onOpenChange={setInteractionModalOpen} leads={interactionContacts as Lead[]} onSave={handleSaveInteraction} />
+      <QuickInteractionModal open={interactionModalOpen} onOpenChange={setInteractionModalOpen} leads={interactionContacts} onSave={handleSaveInteraction} />
     </div>
   );
 }
