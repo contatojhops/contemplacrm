@@ -45,7 +45,7 @@ export function QuickTaskModal({ open, onOpenChange, leads, onSave }: { open: bo
   </div><DialogFooter><Button variant="outline" onClick={()=>onOpenChange(false)}>Cancelar</Button><Button onClick={submit}>Salvar</Button></DialogFooter></DialogContent></Dialog>;
 }
 
-export function QuickInteractionModal({ open, onOpenChange, leads, onSave }: { open: boolean; onOpenChange: (v: boolean) => void; leads: Lead[]; onSave: (leadId: string, interaction: Interacao) => void }) {
+export function QuickInteractionModal({ open, onOpenChange, leads, onSave }: { open: boolean; onOpenChange: (v: boolean) => void; leads: { id: string; nome: string; telefone: string }[]; onSave: (leadId: string, interaction: Interacao) => void }) {
   const [leadId, setLeadId] = useState("");
   const [leadSearch, setLeadSearch] = useState("");
   const [tipo, setTipo] = useState<InteracaoTipo>("WhatsApp");
