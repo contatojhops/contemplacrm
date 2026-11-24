@@ -1,6 +1,7 @@
 import { pageHead } from "@/lib/metadata";
 import { DELETE_CONFIRMATION, localDate, localInput, whatsappUrl } from "@/lib/crm";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { matchesSearch } from "@/lib/search";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -170,7 +171,7 @@ function TaskModal({ open, onOpenChange, initial, onSave }: {
             <Label>Lead (opcional)</Label>
             <Input aria-label="Buscar lead da tarefa" placeholder="Buscar por nome ou telefone" value={leadSearch} onChange={e=>updateLeadSearch(e.target.value)} />
             <div className="flex items-center gap-2">
-              <Select value={form.lead_id || undefined} onValueChange={v=>updateDraft({...form,lead_id:v})}><SelectTrigger aria-label="Lead da tarefa"><SelectValue placeholder="Sem lead vinculado" /></SelectTrigger><SelectContent>{leads.filter(l=>l.nome.toLowerCase().includes(leadSearch.toLowerCase())||l.telefone.includes(leadSearch)).map(l=><SelectItem key={l.id} value={l.id}>{l.nome} · {l.telefone}</SelectItem>)}</SelectContent></Select>
+              <Select value={form.lead_id || undefined} onValueChange={v=>updateDraft({...form,lead_id:v})}><SelectTrigger aria-label="Lead da tarefa"><SelectValue placeholder="Sem lead vinculado" /></SelectTrigger><SelectContent>{leads.filter(l=>matchesSearch(leadSearch,{text:[l.nome],digits:[l.telefone]})).map(l=><SelectItem key={l.id} value={l.id}>{l.nome} · {l.telefone}</SelectItem>)}</SelectContent></Select>
               {form.lead_id && <Button type="button" size="sm" variant="ghost" onClick={()=>updateDraft({...form,lead_id:undefined})}>Remover</Button>}
             </div>
           </div>

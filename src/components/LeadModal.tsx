@@ -227,7 +227,7 @@ export function LeadModal({ open, onOpenChange, initial, onSave, defaultPipeline
               <Button type="button" size="sm" variant="secondary" onClick={registerUpdate}>Registrar atualização</Button>
             </div>
             <section className="space-y-2 mt-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Histórico</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Movimentações no Kanban</h4>{(form.historicoEtapas ?? []).length === 0 && <p className="text-xs text-muted-foreground">Nenhuma movimentação registrada.</p>}{(form.historicoEtapas ?? []).slice().reverse().map(item => <div key={item.id} className="rounded-md border border-border p-2 text-xs"><div className="text-muted-foreground mb-1">{item.data ? new Date(item.data).toLocaleString("pt-BR") : "Data não disponível"}</div><div className="font-medium">{item.etapaAnterior} <span className="text-muted-foreground">→</span> {item.etapaNova}</div></div>)}<h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Histórico</h4>
               {(form.detalhesCliente?.historicoAtualizacoes ?? []).length === 0 && <p className="text-xs text-muted-foreground">Nenhuma atualização registrada.</p>}
               {(form.detalhesCliente?.historicoAtualizacoes ?? []).slice().reverse().map(item => <div key={item.id} className="rounded-md border border-border p-2 text-xs"><div className="text-muted-foreground mb-1">{item.data ? new Date(item.data).toLocaleString("pt-BR") : "Data não disponível (registro anterior)"}</div>{item.texto}</div>)}
             </section>

@@ -23,6 +23,7 @@ import type { Lead, Etapa, Pipeline } from "@/lib/types";
 import { LeadCard, produtoColor } from "@/components/LeadCard";
 import { LeadModal } from "@/components/LeadModal";
 import { PipelineSelector } from "@/components/PipelineSelector";
+import { matchesSearch } from "@/lib/search";
 import { formatBRL } from "@/lib/scoring";
 import { getStageHeaderStyle } from "@/lib/stageColors";
 
@@ -96,62 +97,74 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const kanbanViewportRef = useRef<HTMLDivElement | null>(null);
   const kanbanContentRef = useRef<HTMLDivElement | null>(null);
   const kanbanScrollbarRef = useRef<HTMLDivElement | null>(null);
+  // Estado (não só ref) para reinstalar os observadores quando o quadro monta depois do carregamento.
+  const [kanbanViewportEl, setKanbanViewportEl] = useState<HTMLDivElement | null>(null);
+  const attachKanbanViewport = (el: HTMLDivElement | null) => { kanbanViewportRef.current = el; setKanbanViewportEl(el); };
   const panRef = useRef<{ pointerId: number; startX: number; startScrollLeft: number } | null>(null);
-  const [kanbanMetrics, setKanbanMetrics] = useState({ scrollWidth: 0, clientWidth: 0, scrollLeft: 0 });
+  // Métricas só mudam quando o tamanho ou os limites (início/fim) mudam — nunca a cada pixel rolado.
+  const [kanbanMetrics, setKanbanMetrics] = useState({ scrollWidth: 0, clientWidth: 0, canLeft: false, canRight: false });
   const [kanbanVisible, setKanbanVisible] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
-
-  useEffect(() => {
-    const scrollbar = kanbanScrollbarRef.current;
-    if (scrollbar) scrollbar.scrollLeft = kanbanMetrics.scrollLeft;
-  }, [kanbanVisible, kanbanMetrics.scrollLeft]);
+  const scrollSyncRef = useRef<{ source: "board" | "bar" | null; frame: number }>({ source: null, frame: 0 });
+  const panFrameRef = useRef(0);
+  const panTargetRef = useRef<number | null>(null);
+  const draggingCardRef = useRef(false);
 
   const handleKanbanScrollbar = (event: UIEvent<HTMLDivElement>) => {
+    const sync = scrollSyncRef.current;
+    if (sync.source === "board") return; // eco da própria sincronização
     const viewport = kanbanViewportRef.current;
-    if (viewport && Math.abs(viewport.scrollLeft - event.currentTarget.scrollLeft) > 1) {
-      viewport.scrollLeft = event.currentTarget.scrollLeft;
-    }
+    if (!viewport) return;
+    sync.source = "bar";
+    viewport.scrollLeft = event.currentTarget.scrollLeft;
+    cancelAnimationFrame(sync.frame);
+    sync.frame = requestAnimationFrame(() => { sync.source = null; });
   };
 
   const startKanbanPan = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType !== "mouse" || event.button !== 0) return;
+    if (event.pointerType !== "mouse" || event.button !== 0 || draggingCardRef.current) return;
     const target = event.target as HTMLElement;
     if (!target.closest("[data-kanban-pan-area]")) return;
-    if (target.closest("[data-kanban-drag], button, a, input, select, [role='button']")) return;
+    if (target.closest("[data-kanban-drag], button, a, input, select, textarea, [role='button']")) return;
     const viewport = kanbanViewportRef.current;
     if (!viewport || viewport.scrollWidth <= viewport.clientWidth) return;
-    panRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startScrollLeft: viewport.scrollLeft,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setIsPanning(true);
+    panRef.current = { pointerId: event.pointerId, startX: event.clientX, startScrollLeft: viewport.scrollLeft };
   };
 
   const moveKanbanPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     const pan = panRef.current;
     const viewport = kanbanViewportRef.current;
     if (!pan || !viewport || pan.pointerId !== event.pointerId) return;
-    viewport.scrollLeft = pan.startScrollLeft - (event.clientX - pan.startX);
+    const dx = event.clientX - pan.startX;
+    if (!isPanning) {
+      if (Math.abs(dx) < 4) return; // limiar: não rouba cliques
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setIsPanning(true);
+    }
+    panTargetRef.current = pan.startScrollLeft - dx;
+    if (!panFrameRef.current) {
+      panFrameRef.current = requestAnimationFrame(() => {
+        panFrameRef.current = 0;
+        if (panTargetRef.current !== null && kanbanViewportRef.current) kanbanViewportRef.current.scrollLeft = panTargetRef.current;
+      });
+    }
   };
 
   const stopKanbanPan = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (panRef.current?.pointerId !== event.pointerId) return;
     panRef.current = null;
+    panTargetRef.current = null;
     setIsPanning(false);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
   const scrollKanban = (direction: "left" | "right") => {
     const viewport = kanbanViewportRef.current;
     if (!viewport) return;
-    viewport.scrollBy({
-      left: (direction === "right" ? 1 : -1) * viewport.clientWidth,
-      behavior: "smooth",
-    });
+    const column = viewport.querySelector<HTMLElement>(".kanban-column");
+    const step = column ? Math.max(column.offsetWidth + 12, Math.floor(viewport.clientWidth * 0.8 / (column.offsetWidth + 12)) * (column.offsetWidth + 12)) : viewport.clientWidth * 0.8;
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    viewport.scrollBy({ left: (direction === "right" ? 1 : -1) * step, behavior: reduce ? "auto" : "smooth" });
   };
 
   const [pendingAdvance, setPendingAdvance] = useState<{ lead: Lead; target: Etapa } | null>(null);
@@ -177,13 +190,13 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   const confirmAdvance = () => {
     if (!pendingAdvance) return;
     const { lead, target } = pendingAdvance;
-    if (!noActivity && (!nextDescription.trim() || !nextDateTime || !Number.isFinite(new Date(nextDateTime).getTime()))) { toast.error("Informe a descrição, data e horário da próxima atividade."); return; }
+    if (!noActivity && (!nextDateTime || !Number.isFinite(new Date(nextDateTime).getTime()))) { toast.error("Informe uma data e horário válidos para a próxima atividade."); return; }
     const now = new Date().toISOString();
     setLeads(prev => prev.map(item => { if (item.id !== lead.id) return item; const moved = changeStage(item, target); return { ...moved, ...(shouldSetHot(target) ? { detalhesCliente: { ...moved.detalhesCliente, temperatura: "Quente" as const } } : {}), historicoEtapas: [...(item.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: item.etapa, etapaNova: target, data: now, atividadeRegistrada: !noActivity }] }; }));
     if (!noActivity) {
       const taskId = crypto.randomUUID();
       const taskDate = new Date(nextDateTime).toISOString();
-      setTasks(prev => [{ id: taskId, lead_id: lead.id, leadId: lead.id, titulo: nextType + ": " + nextDescription.trim(), tipo: nextType as "Follow-up" | "Ligação" | "WhatsApp" | "Reunião" | "E-mail" | "Visita" | "Enviar Proposta" | "Recontato" | "Outro", cliente: lead.nome, data: taskDate, concluida: false, prioridade: "Média", descricao: nextDescription.trim(), lembrete: true, proximaAcaoId: taskId }, ...prev]);
+      setTasks(prev => [{ id: taskId, lead_id: lead.id, leadId: lead.id, titulo: nextType + (nextDescription.trim() ? ": " + nextDescription.trim() : ""), tipo: nextType as "Follow-up" | "Ligação" | "WhatsApp" | "Reunião" | "E-mail" | "Visita" | "Enviar Proposta" | "Recontato" | "Outro", cliente: lead.nome, data: taskDate, concluida: false, prioridade: "Média", descricao: nextDescription.trim(), lembrete: true, proximaAcaoId: taskId }, ...prev]);
       setLeads(prev => prev.map(item => item.id === lead.id ? { ...item, detalhesCliente: { ...item.detalhesCliente, proximaAcao: { id: taskId, data: taskDate, hora: new Date(taskDate).toTimeString().slice(0,5), tipo: nextType, descricao: nextDescription.trim() } } } : item));
     }
     setPendingAdvance(null);
@@ -202,7 +215,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     if (pipelineId && l.pipeline_id !== pipelineId) return false;
     const range = periodRange(period, new Date(), customStart, customEnd);
     if (!inRange(l.criadoEm,range.start,range.end)) return false;
-    if (search && !l.nome.toLowerCase().includes(search.toLowerCase()) && !l.telefone.includes(search)) return false;
+    if (search && !matchesSearch(search, { text: [l.nome], digits: [l.telefone] })) return false;
     if (filterProduto !== "all" && l.produto !== filterProduto) return false;
     if (filterOrigem !== "all" && l.origem !== filterOrigem) return false;
     if (filterEtapa !== "all" && l.etapa !== filterEtapa) return false;
@@ -254,48 +267,58 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
   useEffect(() => {
     if (view !== "kanban") {
       setKanbanVisible(false);
-      setKanbanMetrics({ scrollWidth: 0, clientWidth: 0, scrollLeft: 0 });
+      setKanbanMetrics({ scrollWidth: 0, clientWidth: 0, canLeft: false, canRight: false });
       return;
     }
-    const viewport = kanbanViewportRef.current;
+    const viewport = kanbanViewportEl;
     if (!viewport) return;
+    const sync = scrollSyncRef.current;
+    let frame = 0;
 
-    const syncMetrics = () => {
-      const next = {
-        scrollWidth: viewport.scrollWidth,
-        clientWidth: viewport.clientWidth,
-        scrollLeft: viewport.scrollLeft,
-      };
+    const measure = () => {
+      frame = 0;
+      const { scrollWidth, clientWidth, scrollLeft } = viewport;
+      const next = { scrollWidth, clientWidth, canLeft: scrollLeft > 2, canRight: scrollLeft < scrollWidth - clientWidth - 2 };
       setKanbanMetrics(current =>
-        current.scrollWidth === next.scrollWidth &&
-        current.clientWidth === next.clientWidth &&
-        Math.abs(current.scrollLeft - next.scrollLeft) < 1
-          ? current
-          : next
+        current.scrollWidth === next.scrollWidth && current.clientWidth === next.clientWidth &&
+        current.canLeft === next.canLeft && current.canRight === next.canRight ? current : next
       );
       const scrollbar = kanbanScrollbarRef.current;
-      if (scrollbar && Math.abs(scrollbar.scrollLeft - next.scrollLeft) > 1) {
-        scrollbar.scrollLeft = next.scrollLeft;
+      if (scrollbar && sync.source !== "bar" && Math.abs(scrollbar.scrollLeft - scrollLeft) > 1) {
+        sync.source = "board";
+        scrollbar.scrollLeft = scrollLeft;
+        cancelAnimationFrame(sync.frame);
+        sync.frame = requestAnimationFrame(() => { sync.source = null; });
       }
     };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
 
-    syncMetrics();
-    viewport.addEventListener("scroll", syncMetrics, { passive: true });
-    const resizeObserver = new ResizeObserver(syncMetrics);
+    measure();
+    viewport.addEventListener("scroll", schedule, { passive: true });
+    const resizeObserver = new ResizeObserver(schedule);
     resizeObserver.observe(viewport);
     if (kanbanContentRef.current) resizeObserver.observe(kanbanContentRef.current);
     const intersectionObserver = new IntersectionObserver(
       entries => setKanbanVisible(entries[0]?.isIntersecting ?? false),
-      { threshold: 0.05 }
+      { threshold: 0 }
     );
     intersectionObserver.observe(viewport);
 
     return () => {
-      viewport.removeEventListener("scroll", syncMetrics);
+      cancelAnimationFrame(frame);
+      cancelAnimationFrame(panFrameRef.current);
+      panFrameRef.current = 0;
+      viewport.removeEventListener("scroll", schedule);
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
     };
-  }, [view, filtered.length, stages.length]);
+  }, [view, kanbanViewportEl]);
+
+  // Ao exibir a barra flutuante, alinha sua posição com o quadro uma única vez.
+  useEffect(() => {
+    const scrollbar = kanbanScrollbarRef.current, viewport = kanbanViewportRef.current;
+    if (scrollbar && viewport) scrollbar.scrollLeft = viewport.scrollLeft;
+  }, [kanbanVisible, kanbanMetrics.scrollWidth > kanbanMetrics.clientWidth + 2]);
 
   const toggleSort = (field: typeof sortBy) => { if (sortBy === field) setSortDirection(current => current === "asc" ? "desc" : "asc"); else { setSortBy(field); setSortDirection(field === "temperatura" ? "desc" : "asc"); } };
 
@@ -471,15 +494,15 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
 
       {view === "kanban" ? (
         <>
-          <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} collisionDetection={pointerWithin} autoScroll={{ threshold: { x: 0.15, y: 0.1 }, acceleration: 8 }} onDragStart={() => { draggingCardRef.current = true; }} onDragCancel={() => { draggingCardRef.current = false; }} onDragEnd={(event) => { draggingCardRef.current = false; handleDragEnd(event); }}>
             <div
-              ref={kanbanViewportRef}
+              ref={attachKanbanViewport}
               data-kanban-pan-area="true"
               onPointerDown={startKanbanPan}
               onPointerMove={moveKanbanPan}
               onPointerUp={stopKanbanPan}
               onPointerCancel={stopKanbanPan}
-              className={`overflow-x-auto overflow-y-hidden pb-8 ${isPanning ? "cursor-grabbing select-none" : "cursor-grab"}`}
+              className={`overflow-x-auto overflow-y-hidden overscroll-x-contain pb-8 ${isPanning ? "cursor-grabbing select-none" : "cursor-grab"}`}
               aria-label="Quadros do Kanban. Arraste para os lados para navegar."
             >
               <div ref={kanbanContentRef} className="flex w-max gap-3">
@@ -514,7 +537,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
                 </div>
               </div>
               <div className="fixed right-4 top-1/2 z-40 flex flex-col gap-2">
-                {kanbanMetrics.scrollLeft > 2 && (
+                {kanbanMetrics.canLeft && (
                   <Button
                     size="icon"
                     variant="outline"
@@ -526,7 +549,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                 )}
-                {kanbanMetrics.scrollLeft < kanbanMetrics.scrollWidth - kanbanMetrics.clientWidth - 2 && (
+                {kanbanMetrics.canRight && (
                   <Button
                     size="icon"
                     variant="outline"
@@ -595,12 +618,12 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
           {!noActivity && <div className="space-y-3">
             <div><label className="text-sm font-medium">Tipo de atividade</label><Select value={nextType} onValueChange={setNextType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["Follow-up","Ligação","WhatsApp","Reunião","E-mail","Visita","Enviar Proposta","Recontato","Outro"].map(type=><SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div>
             <div><label className="text-sm font-medium">Data e horário</label><Input type="datetime-local" value={nextDateTime} onChange={e=>setNextDateTime(e.target.value)} /></div>
-            <div><label className="text-sm font-medium">Descrição da próxima atividade</label><Textarea value={nextDescription} onChange={e=>setNextDescription(e.target.value)} placeholder="Ex.: Ligar para apresentar a simulação..." /></div>
+            <div><label className="text-sm font-medium">Descrição da próxima atividade (opcional)</label><Textarea value={nextDescription} onChange={e=>setNextDescription(e.target.value)} placeholder="Informação adicional, se necessário..." /></div>
           </div>}
         </div>
         <DialogFooter><Button variant="outline" onClick={()=>setPendingAdvance(null)}>Cancelar</Button><Button onClick={confirmAdvance}>Confirmar avanço</Button></DialogFooter>
       </DialogContent></Dialog>
-      <Dialog open={!!lossLead} onOpenChange={open => !open && setLossLead(null)}><DialogContent><DialogHeader><DialogTitle>Motivo da perda</DialogTitle></DialogHeader><Textarea aria-label="Motivo da perda" value={lossReason} onChange={e => setLossReason(e.target.value)} /><DialogFooter><Button variant="outline" onClick={() => setLossLead(null)}>Cancelar</Button><Button onClick={() => { if (!lossLead || !lossReason.trim()) { toast.error("Informe o motivo da perda."); return; } setLeads(prev => prev.map(l => l.id === lossLead.id ? changeStage(l, "Perdido", lossReason) : l)); setLossLead(null); toast.success("Lead marcado como perdido"); }}>Confirmar perda</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={!!lossLead} onOpenChange={open => !open && setLossLead(null)}><DialogContent><DialogHeader><DialogTitle>Motivo da perda</DialogTitle></DialogHeader><Textarea aria-label="Motivo da perda" value={lossReason} onChange={e => setLossReason(e.target.value)} /><DialogFooter><Button variant="outline" onClick={() => setLossLead(null)}>Cancelar</Button><Button onClick={() => { if (!lossLead || !lossReason.trim()) { toast.error("Informe o motivo da perda."); return; } const now = new Date().toISOString(); setLeads(prev => prev.map(l => l.id === lossLead.id ? { ...changeStage(l, "Perdido", lossReason), historicoEtapas: [...(l.historicoEtapas ?? []), { id: crypto.randomUUID(), etapaAnterior: l.etapa, etapaNova: "Perdido", data: now, atividadeRegistrada: false }] } : l)); setLossLead(null); toast.success("Lead marcado como perdido"); }}>Confirmar perda</Button></DialogFooter></DialogContent></Dialog>
       <Dialog open={!!transfer} onOpenChange={v=>!v&&setTransfer(null)}><DialogContent><DialogHeader><DialogTitle>Mover para outra pipeline</DialogTitle></DialogHeader><Select value={destination} onValueChange={setDestination}><SelectTrigger aria-label="Pipeline de destino"><SelectValue placeholder="Selecione a pipeline" /></SelectTrigger><SelectContent>{pipelines.filter(p=>!p.arquivada&&p.id!==transfer?.pipeline_id).map(p=><SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent></Select><DialogFooter><Button variant="outline" onClick={()=>setTransfer(null)}>Cancelar</Button><Button disabled={!destination} onClick={()=>{if(!transfer)return;setLeads(prev=>prev.map(l=>l.id===transfer.id?{...l,pipeline_id:destination}:l));setTransfer(null);toast.success("Lead movido para outra pipeline");}}>Mover lead</Button></DialogFooter></DialogContent></Dialog>
       <LeadImportDialog defaultPipelineId={pipelineId} open={importOpen} onOpenChange={setImportOpen} />
       <LeadModal defaultPipelineId={pipelineId} open={modalOpen} onOpenChange={setModalOpen} initial={editing} onSave={handleSave} />

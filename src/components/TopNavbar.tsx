@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { localDate } from "@/lib/crm";
+import { searchScore } from "@/lib/search";
 import { FEATURES } from "@/lib/features";
 import { MobileNavigation } from "./MobileNavigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -52,17 +53,15 @@ export function TopNavbar() {
 
   const results = useMemo(() => {
     if (!q.trim()) return [];
-    const s = q.toLowerCase();
-    const out: { tipo: string; nome: string; sub: string; to: string; id?: string }[] = [];
-    leads.forEach((l) => {
-      if (l.nome.toLowerCase().includes(s) || l.telefone.includes(q)) out.push({ tipo: "Lead", nome: l.nome, sub: l.etapa, to: "/pipeline/$id", id: l.pipeline_id });
-    });
-    clientes.forEach((c) => {
-      if (c.nome.toLowerCase().includes(s) || c.telefone.includes(q) || (c.cpf ?? "").includes(q)) out.push({ tipo: "Cliente", nome: c.nome, sub: c.fase ?? "Cliente", to: "/clientes/$id", id: c.id });
-    });
-    propostas.filter(() => FEATURES.propostas).forEach((p) => {
-      if (p.leadNome.toLowerCase().includes(s)) out.push({ tipo: "Proposta", nome: p.leadNome, sub: p.status, to: "/propostas" });
-    });
+    type Hit = { tipo: string; nome: string; sub: string; to: string; id?: string };
+    // Mantém a ordem das categorias (Lead, Cliente, Proposta); dentro de cada uma, ordena por relevância.
+    const ranked = <T,>(items: T[], score: (item: T) => number, map: (item: T) => Hit) =>
+      items.map(item => ({ item, sc: score(item) })).filter(x => x.sc > 0).sort((a, b) => b.sc - a.sc).map(x => map(x.item));
+    const out: Hit[] = [
+      ...ranked(leads, l => searchScore(q, { text: [l.nome], digits: [l.telefone] }), l => ({ tipo: "Lead", nome: l.nome, sub: l.etapa, to: "/pipeline/$id", id: l.pipeline_id })),
+      ...ranked(clientes, c => searchScore(q, { text: [c.nome], digits: [c.telefone, c.cpf] }), c => ({ tipo: "Cliente", nome: c.nome, sub: c.fase ?? "Cliente", to: "/clientes/$id", id: c.id })),
+      ...ranked(propostas.filter(() => FEATURES.propostas), p => searchScore(q, { text: [p.leadNome] }), p => ({ tipo: "Proposta", nome: p.leadNome, sub: p.status, to: "/propostas" })),
+    ];
     return out.slice(0, 8);
   }, [q, leads, clientes, propostas]);
 
