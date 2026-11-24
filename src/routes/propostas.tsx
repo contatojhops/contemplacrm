@@ -1,6 +1,7 @@
 import { pageHead } from "@/lib/metadata";
 import { FEATURES } from "@/lib/features";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { matchesSearch } from "@/lib/search";
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +66,7 @@ function PropostasTab() {
   const filtered = propostas.filter((p) => {
     if (fStatus !== "all" && p.status !== fStatus) return false;
     if (fProduto !== "all" && p.produto !== fProduto) return false;
-    if (search && !p.leadNome.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !matchesSearch(search, { text: [p.leadNome] })) return false;
     return true;
   });
 

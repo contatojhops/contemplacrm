@@ -13,6 +13,7 @@ import { useClientes, useLeads, useConfig } from "@/lib/store";
 import { formatBRL } from "@/lib/scoring";
 import { LeadModal } from "@/components/LeadModal";
 import { toast } from "sonner";
+import { matchesSearch } from "@/lib/search";
 import type { Lead } from "@/lib/types";
 import type { Cliente, ClienteFase, ClientePerfil } from "@/lib/types";
 
@@ -73,8 +74,7 @@ function ClientesPage() {
   }, [clientes, leads]);
 
   const filtered = todos.filter((c) => {
-    const s = search.toLowerCase();
-    if (search && !c.nome.toLowerCase().includes(s) && !c.telefone.includes(search) && !(c.cpf ?? "").includes(search)) return false;
+    if (search && !matchesSearch(search, { text: [c.nome], digits: [c.telefone, c.cpf] })) return false;
     if (fase !== "Todos" && c.fase !== fase) return false;
     if (fProduto !== "all" && !(c.produtos?.length ? c.produtos.some(item => item.produto === fProduto) : c.produto === fProduto)) return false;
     if (fPerfil !== "all" && c.perfil !== fPerfil) return false;
