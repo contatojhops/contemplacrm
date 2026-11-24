@@ -595,7 +595,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
           {!noActivity && <div className="space-y-3">
             <div><label className="text-sm font-medium">Tipo de atividade</label><Select value={nextType} onValueChange={setNextType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["Follow-up","Ligação","WhatsApp","Reunião","E-mail","Visita","Enviar Proposta","Recontato","Outro"].map(type=><SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent></Select></div>
             <div><label className="text-sm font-medium">Data e horário</label><Input type="datetime-local" value={nextDateTime} onChange={e=>setNextDateTime(e.target.value)} /></div>
-            <div><label className="text-sm font-medium">Descrição da próxima atividade</label><Textarea value={nextDescription} onChange={e=>setNextDescription(e.target.value)} placeholder="Ex.: Ligar para apresentar a simulação..." /></div>
+            <div><label className="text-sm font-medium">Descrição da próxima atividade (opcional)</label><Textarea value={nextDescription} onChange={e=>setNextDescription(e.target.value)} placeholder="Informação adicional, se necessário..." /></div>
           </div>}
         </div>
         <DialogFooter><Button variant="outline" onClick={()=>setPendingAdvance(null)}>Cancelar</Button><Button onClick={confirmAdvance}>Confirmar avanço</Button></DialogFooter>
