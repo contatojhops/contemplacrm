@@ -26,6 +26,7 @@ type ImportRow = {
   temperatura: "Frio" | "Morno" | "Quente";
   observacoes: string;
   error?: string;
+  warning?: string;
   duplicateId?: string;
   duplicateName?: string;
   duplicateKind?: "phone" | "email" | "both";
@@ -140,13 +141,17 @@ function parseCsv(text: string) {
   };
   return rows.slice(1).map((values, index): ImportRow => {
     const get = (field: string) => indexes[field] === undefined ? "" : values[indexes[field]] ?? "";
-    const valorCarta = numberValue(get("valorCarta"));
+    const rawValorCarta = numberValue(get("valorCarta"));
+    const valorCarta = Number.isFinite(rawValorCarta) ? rawValorCarta : 0;
     const quantidadeRaw = get("quantidade");
-    const quantidade = quantidadeRaw ? numberValue(quantidadeRaw) : 1;
+    const rawQuantidade = quantidadeRaw ? numberValue(quantidadeRaw) : 1;
+    const quantidade = Number.isInteger(rawQuantidade) && rawQuantidade >= 1 ? rawQuantidade : 1;
     const produto2 = get("produto2").trim();
-    const valorCarta2 = get("valorCarta2") ? numberValue(get("valorCarta2")) : 0;
+    const rawValorCarta2 = get("valorCarta2") ? numberValue(get("valorCarta2")) : 0;
+    const valorCarta2 = Number.isFinite(rawValorCarta2) ? rawValorCarta2 : 0;
     const quantidade2Raw = get("quantidade2");
-    const quantidade2 = quantidade2Raw ? numberValue(quantidade2Raw) : 1;
+    const rawQuantidade2 = quantidade2Raw ? numberValue(quantidade2Raw) : 1;
+    const quantidade2 = Number.isInteger(rawQuantidade2) && rawQuantidade2 >= 1 ? rawQuantidade2 : 1;
     const produto1 = get("produto").trim();
     // Só cria uma linha de produto quando a respectiva célula estiver preenchida.
     // Isso evita inventar "Imóvel" quando o contato possui apenas Veículo na segunda posição.
@@ -155,7 +160,8 @@ function parseCsv(text: string) {
       ...(produto2 ? [{ produto: produto2, quantidade: quantidade2, valorUnitario: valorCarta2 }] : []),
     ];
     const totalProdutos = produtos.reduce((sum, item) => sum + item.quantidade * item.valorUnitario, 0);
-    const capacidade = get("capacidadeMensal") ? numberValue(get("capacidadeMensal")) : undefined;
+    const rawCapacidade = get("capacidadeMensal") ? numberValue(get("capacidadeMensal")) : undefined;
+    const capacidade = rawCapacidade !== undefined && Number.isFinite(rawCapacidade) ? rawCapacidade : undefined;
     const temperature = get("temperatura").trim().toLocaleLowerCase("pt-BR");
     const row: ImportRow = {
       line: index + 2, nome: get("nome"), telefone: get("telefone"), email: get("email"),
@@ -163,6 +169,7 @@ function parseCsv(text: string) {
       etapa: get("etapa"), perfil: get("perfil"), objetivo: get("objetivo"),
       capacidadeMensal: capacidade, temperatura: temperature === "frio" ? "Frio" : temperature === "quente" ? "Quente" : "Morno",
       observacoes: get("observacoes"), action: "merge",
+      warning: (!Number.isFinite(rawValorCarta) || !Number.isInteger(rawQuantidade) || rawQuantidade < 1 || !Number.isFinite(rawValorCarta2) || !Number.isInteger(rawQuantidade2) || rawQuantidade2 < 1 || (rawCapacidade !== undefined && !Number.isFinite(rawCapacidade)) || (get("email").trim() && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(get("email").trim()))) ? "Algum dado opcional inválido foi desconsiderado ou ajustado. Revise se necessário." : undefined,
     };
     if (!row.nome.trim()) row.error = "Nome não informado.";
     else if (!normalizePhone(row.telefone)) row.error = "Telefone não informado.";
@@ -193,6 +200,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
   const [newPipelineName, setNewPipelineName] = useState("");
   const [initialStage, setInitialStage] = useState((config.etapas ?? []).find(stage => !["Fechado", "Perdido"].includes(stage.nome))?.nome ?? "Novo Lead");
   const [busy, setBusy] = useState(false);
+  const [ignoreIncomplete, setIgnoreIncomplete] = useState(false);
   const stages = (config.etapas ?? []).map(stage => stage.nome);
   useEffect(() => { if (open) { setPipelineChoice(defaultPipelineId ?? ""); setInitialStage((config.etapas ?? []).find(stage => !["Fechado", "Perdido"].includes(stage.nome))?.nome ?? "Novo Lead"); } }, [open, defaultPipelineId, config.etapas]);
   const analyzedRows = useMemo(() => {
@@ -248,8 +256,8 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
   };
 
   const importNow = async () => {
-    const finalRows = analyzedRows;
-    if (!finalRows.length || finalRows.some(row => row.error)) { toast.error("Corrija as linhas inválidas antes de importar."); return; }
+    const finalRows = ignoreIncomplete ? analyzedRows.filter(row => !row.error) : analyzedRows;
+    if (!finalRows.length || finalRows.some(row => row.error)) { toast.error("Preencha Nome e Telefone ou escolha ignorar as linhas incompletas."); return; }
     if (!readyCount) { toast.info("Não há leads novos ou atualizações para importar."); return; }
     if (!pipelineChoice) { toast.error("Selecione uma pipeline de destino."); return; }
     if (pipelineChoice === "__new__" && !newPipelineName.trim()) { toast.error("Informe o nome da nova pipeline."); return; }
@@ -298,9 +306,9 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
       await importCollections({ ...(createdPipeline ? { pipelines: [createdPipeline] } : {}), leads: changedLeads }, null, true);
       const added = imported.filter(item => !leads.some(lead => lead.id === item.id)).length;
       const updated = Object.keys(replacements).length + imported.filter(item => leads.some(lead => lead.id === item.id)).length;
-      const skipped = finalRows.filter(row => row.duplicateId && row.action === "skip").length;
+      const skipped = analyzedRows.filter(row => row.error || (row.duplicateId && row.action === "skip")).length;
       toast.success(`Importação concluída: ${added} novos, ${updated} atualizados e ${skipped} ignorados.`);
-      setRows([]); setFileName(""); setNewPipelineName(""); onOpenChange(false);
+      setRows([]); setFileName(""); setNewPipelineName(""); setIgnoreIncomplete(false); onOpenChange(false);
     } catch (error) { toast.error(error instanceof Error ? error.message : "Falha ao importar os leads."); }
     finally { setBusy(false); }
   };
@@ -337,14 +345,14 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
               <Label>Prévia e tratamento de duplicados</Label>
               <div className="max-h-64 overflow-auto rounded-md border">
                 <table className="w-full text-sm"><thead className="sticky top-0 bg-muted"><tr><th className="p-2 text-left">Linha / Lead</th><th className="p-2 text-left">Telefone</th><th className="p-2 text-left">Produtos / valores</th><th className="p-2 text-left">Situação</th><th className="p-2 text-left">Ação</th></tr></thead><tbody>
-                  {analyzedRows.map(row => <tr key={row.line} className="border-t"><td className="p-2"><div className="font-medium">{row.nome || "Sem nome"}</div><div className="text-xs text-muted-foreground">Linha {row.line}</div></td><td className="p-2 whitespace-nowrap">{row.telefone || "—"}</td><td className="p-2 min-w-48"><div className="space-y-0.5">{row.produtos.length ? row.produtos.map((item, index) => <div key={index} className="text-xs">{item.produto} · {item.quantidade} × {formatImportCurrency(item.valorUnitario)}</div>) : <span className="text-xs text-muted-foreground">Sem produto informado</span>}{row.productNotes?.map((note, noteIndex) => <div key={noteIndex} className="text-[10px] text-amber-600">{note}</div>)}<div className="text-xs font-medium">{formatImportCurrency(row.valorCarta)} total</div></div></td><td className="p-2">{row.error ? <span className="text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{row.error}</span> : row.duplicateId ? <span className="text-amber-600">Já existe: {row.duplicateName}</span> : <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Novo lead</span>}</td><td className="p-2">{row.error ? <div className="flex items-center gap-2"><span className="text-xs text-destructive">Remover linha</span><Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title={`Remover ${row.nome || `linha ${row.line}`} desta importação`} aria-label={`Remover ${row.nome || `linha ${row.line}`} desta importação`} onClick={() => setRows(prev => prev.filter(item => item.line !== row.line))}><Trash2 className="h-4 w-4" /></Button></div> : row.duplicateId ? <Select value={row.action} onValueChange={value => setRows(prev => prev.map(item => item.line === row.line ? { ...item, action: value as ImportRow["action"] } : item))}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merge">Acrescentar</SelectItem><SelectItem value="replace">Substituir</SelectItem><SelectItem value="skip">Ignorar</SelectItem></SelectContent></Select> : "Importar"}</td></tr>)}
+                  {analyzedRows.map(row => <tr key={row.line} className="border-t"><td className="p-2">{row.error && !row.nome.trim() ? <Input className="h-8 min-w-36" value={row.nome} placeholder="Preencher nome" onChange={event => setRows(prev => prev.map(item => item.line === row.line ? { ...item, nome: event.target.value, error: event.target.value.trim() && normalizePhone(item.telefone) ? undefined : !event.target.value.trim() ? "Nome não informado." : "Telefone não informado." } : item))} /> : <div className="font-medium">{row.nome || "Sem nome"}</div>}<div className="text-xs text-muted-foreground">Linha {row.line}</div></td><td className="p-2 whitespace-nowrap">{row.error && !normalizePhone(row.telefone) ? <Input className="h-8 min-w-32" value={row.telefone} placeholder="Preencher telefone" onChange={event => setRows(prev => prev.map(item => item.line === row.line ? { ...item, telefone: event.target.value, error: !item.nome.trim() ? "Nome não informado." : !normalizePhone(event.target.value) ? "Telefone não informado." : undefined } : item))} /> : row.telefone || "—"}</td><td className="p-2 min-w-48"><div className="space-y-0.5">{row.produtos.length ? row.produtos.map((item, index) => <div key={index} className="text-xs">{item.produto} · {item.quantidade} × {formatImportCurrency(item.valorUnitario)}</div>) : <span className="text-xs text-muted-foreground">Sem produto informado</span>}{row.productNotes?.map((note, noteIndex) => <div key={noteIndex} className="text-[10px] text-amber-600">{note}</div>)}<div className="text-xs font-medium">{formatImportCurrency(row.valorCarta)} total</div></div></td><td className="p-2">{row.error ? <span className="text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" />{row.error}</span> : row.warning ? <span className="text-amber-600">{row.warning}</span> : row.duplicateId ? <span className="text-amber-600">Já existe: {row.duplicateName}</span> : <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Novo lead</span>}</td><td className="p-2">{row.error ? <div className="flex items-center gap-2"><span className="text-xs text-destructive">Remover linha</span><Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title={`Remover ${row.nome || `linha ${row.line}`} desta importação`} aria-label={`Remover ${row.nome || `linha ${row.line}`} desta importação`} onClick={() => setRows(prev => prev.filter(item => item.line !== row.line))}><Trash2 className="h-4 w-4" /></Button></div> : row.duplicateId ? <Select value={row.action} onValueChange={value => setRows(prev => prev.map(item => item.line === row.line ? { ...item, action: value as ImportRow["action"] } : item))}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="merge">Acrescentar</SelectItem><SelectItem value="replace">Substituir</SelectItem><SelectItem value="skip">Ignorar</SelectItem></SelectContent></Select> : "Importar"}</td></tr>)}
                 </tbody></table>
               </div>
-              <p className="text-xs text-muted-foreground">Duplicidade identificada por telefone ou e-mail. “Acrescentar” preenche apenas campos vazios e mantém pipeline/etapa atuais; “Substituir” atualiza os dados da planilha, direciona para a pipeline escolhida e preserva o histórico comercial; “Ignorar” mantém o cadastro atual.</p>
+              <p className="text-xs text-muted-foreground">Nome e telefone são os únicos campos obrigatórios. Dados opcionais inválidos são desconsiderados ou ajustados, sem bloquear a linha. Duplicidade identificada por telefone ou e-mail. “Acrescentar” preenche apenas campos vazios e mantém pipeline/etapa atuais; “Substituir” atualiza os dados da planilha, direciona para a pipeline escolhida e preserva o histórico comercial; “Ignorar” mantém o cadastro atual.</p>
             </div>
           </>}
         </div>
-        <DialogFooter className="shrink-0 border-t pt-3"><Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancelar</Button><Button onClick={importNow} disabled={busy || !analyzedRows.length || analyzedRows.some(row => row.error)}>{busy ? "Importando..." : `Importar ${readyCount} leads`}</Button></DialogFooter>
+        <DialogFooter className="shrink-0 border-t pt-3 flex-wrap"><Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancelar</Button>{analyzedRows.some(row => row.error) && <Button type="button" variant="secondary" onClick={() => { setIgnoreIncomplete(true); void importNow(); }} disabled={busy || !validRows.length}>Ignorar {analyzedRows.filter(row => row.error).length} linhas incompletas e continuar</Button>}<Button onClick={importNow} disabled={busy || !analyzedRows.length || analyzedRows.some(row => row.error)}>{busy ? "Importando..." : `Importar ${readyCount} leads`}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
