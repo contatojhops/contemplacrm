@@ -255,8 +255,8 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
     } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível ler a planilha."); }
   };
 
-  const importNow = async () => {
-    const finalRows = ignoreIncomplete ? analyzedRows.filter(row => !row.error) : analyzedRows;
+  const importNow = async (ignoreIncompleteOverride = false) => {
+    const finalRows = (ignoreIncomplete || ignoreIncompleteOverride) ? analyzedRows.filter(row => !row.error) : analyzedRows;
     if (!finalRows.length || finalRows.some(row => row.error)) { toast.error("Preencha Nome e Telefone ou escolha ignorar as linhas incompletas."); return; }
     if (!readyCount) { toast.info("Não há leads novos ou atualizações para importar."); return; }
     if (!pipelineChoice) { toast.error("Selecione uma pipeline de destino."); return; }
@@ -352,7 +352,7 @@ export function LeadImportDialog({ open, onOpenChange, defaultPipelineId }: { op
             </div>
           </>}
         </div>
-        <DialogFooter className="shrink-0 border-t pt-3 flex-wrap"><Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancelar</Button>{analyzedRows.some(row => row.error) && <Button type="button" variant="secondary" onClick={() => { setIgnoreIncomplete(true); void importNow(); }} disabled={busy || !validRows.length}>Ignorar {analyzedRows.filter(row => row.error).length} linhas incompletas e continuar</Button>}<Button onClick={importNow} disabled={busy || !analyzedRows.length || analyzedRows.some(row => row.error)}>{busy ? "Importando..." : `Importar ${readyCount} leads`}</Button></DialogFooter>
+        <DialogFooter className="shrink-0 border-t pt-3 flex-wrap"><Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancelar</Button>{analyzedRows.some(row => row.error) && <Button type="button" variant="secondary" onClick={() => { setIgnoreIncomplete(true); void importNow(true); }} disabled={busy || !validRows.length}>Ignorar {analyzedRows.filter(row => row.error).length} linhas incompletas e continuar</Button>}<Button onClick={importNow} disabled={busy || !analyzedRows.length || analyzedRows.some(row => row.error)}>{busy ? "Importando..." : `Importar ${readyCount} leads`}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
