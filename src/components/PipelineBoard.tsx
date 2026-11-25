@@ -26,6 +26,11 @@ import { PipelineSelector } from "@/components/PipelineSelector";
 import { matchesSearch } from "@/lib/search";
 import { formatBRL } from "@/lib/scoring";
 import { getStageHeaderStyle } from "@/lib/stageColors";
+import { Sparkles, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { getNextStepSuggestions } from "@/lib/leadSuggestions.functions";
+import { isStalled, suggestionKey, setSuggestions, hasFreshSuggestion } from "@/lib/suggestionStore";
+import { stageDays } from "@/lib/crm";
 
 
 
@@ -223,6 +228,31 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
     if (filterPipeline !== "all" && l.pipeline_id !== filterPipeline) return false;
     return true;
   }), [leads, search, filterProduto, filterOrigem, filterEtapa, filterTemperatura, filterPipeline, pipelineId, period, customStart, customEnd]);
+
+  const [suggesting, setSuggesting] = useState(false);
+  const stalled = useMemo(() => filtered.filter(l => isStalled(l)), [filtered]);
+  const suggestNext = async () => {
+    const pending = stalled.filter(l => !hasFreshSuggestion(l)).slice(0, 30);
+    if (!pending.length) { toast.info(stalled.length ? "Os leads parados já têm sugestões atualizadas." : "Nenhum lead parado há mais de 7 dias nesta visão."); return; }
+    setSuggesting(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
+      if (!token) { toast.error("Sessão expirada. Entre novamente."); return; }
+      const now = Date.now();
+      const res = await getNextStepSuggestions({ data: { token, leads: pending.map(l => {
+        const ints = l.detalhesCliente?.interacoes ?? [];
+        const last = ints[ints.length - 1];
+        const lc = l.ultimoContato ? new Date(l.ultimoContato).getTime() : NaN;
+        return { id: l.id, nome: l.nome.slice(0, 120), etapa: l.etapa, diasNaEtapa: stageDays(l), produto: String(l.produto ?? ""), valor: l.valorCarta || 0, origem: String(l.origem ?? ""), diasSemContato: Number.isFinite(lc) ? Math.max(0, Math.floor((now - lc) / 86400000)) : null, observacoes: (l.observacoes ?? "").slice(0, 400), objetivo: (l.detalhesCliente?.objetivo ?? "").slice(0, 200), temperatura: l.detalhesCliente?.temperatura ?? "", ultimaInteracao: last ? `${last.tipo} (${last.resultado}): ${last.resumo}`.slice(0, 300) : "" };
+      }) } });
+      if (res.error) { toast.error(res.error); return; }
+      const byId = new Map(pending.map(l => [l.id, l]));
+      setSuggestions(Object.fromEntries(res.sugestoes.filter(s => byId.has(s.id)).map(s => [s.id, { proximoPasso: s.proximoPasso, motivo: s.motivo, key: suggestionKey(byId.get(s.id)!) }])));
+      toast.success(`${res.sugestoes.length} sugestão(ões) gerada(s).`);
+    } catch { toast.error("Não foi possível gerar sugestões agora."); }
+    finally { setSuggesting(false); }
+  };
 
   useEffect(() => {
     const targetLeadId = new URLSearchParams(window.location.search).get("leadId");
@@ -424,7 +454,7 @@ export function PipelineBoard({ pipelineId }: { pipelineId?: string }) {
           </div>
           <div className="flex flex-wrap items-center gap-2 mt-2"><PipelineBadge pipeline={pipeline} /><span className="text-sm text-muted-foreground">{summary.leads} leads · {summary.ativos} ativos · {formatBRL(summary.aberto)} em aberto · {summary.conversao.toFixed(1)}% conversão</span></div>
         </div>
-        <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Exportar CSV</Button><Button variant="outline" disabled={pipeline?.arquivada} onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" />Importar leads</Button><Button disabled={pipeline?.arquivada} onClick={() => { setEditing(null); setModalOpen(true); }}>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={suggestNext} disabled={suggesting} title="Sugere o próximo passo para leads parados há mais de 7 dias">{suggesting?<Loader2 className="h-4 w-4 mr-2 animate-spin" />:<Sparkles className="h-4 w-4 mr-2" />}Sugerir próximos passos{stalled.length?` (${stalled.length})`:""}</Button><Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" />Exportar CSV</Button><Button variant="outline" disabled={pipeline?.arquivada} onClick={() => setImportOpen(true)}><Upload className="h-4 w-4 mr-2" />Importar leads</Button><Button disabled={pipeline?.arquivada} onClick={() => { setEditing(null); setModalOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />Novo Lead
         </Button></div>
       </div>

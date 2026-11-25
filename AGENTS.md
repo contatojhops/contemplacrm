@@ -8,3 +8,4 @@
 - Dashboard: current-status figures (active, in proposal, open value, funnel, alerts) ignore the period; flow figures use criadoEm / closed_at / stage_changed_at; 6-month evolution always ignores the period.
 - All lead/client/proposal text searches use src/lib/search.ts (matchesSearch/searchScore): accent/case-insensitive, every query word must match, fuzzy only for words ≥4 letters with same first letter; keeps search behavior consistent and avoids false positives.
 - Kanban horizontal scroll keeps scrollLeft out of React state (only edge/size flags), syncs board↔floating bar via rAF with a source flag; avoids per-pixel re-renders and circular sync.
+- AI next-step suggestions: Kanban button batches stalled leads (>7 days in stage, same rule as Dashboard) into one server-function call to Lovable AI Gateway (src/lib/leadSuggestions.*); results are kept per session keyed by stage+last contact, not persisted, to avoid repeat billing and stale advice.

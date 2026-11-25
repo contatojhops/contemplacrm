@@ -6,6 +6,8 @@ import { Pencil, ArrowRight, Calendar, ArrowRightLeft } from "lucide-react";
 import { formatBRL } from "@/lib/scoring";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Sparkles } from "lucide-react";
+import { useSuggestion } from "@/lib/suggestionStore";
 
 const produtoColor: Record<string, string> = {
   "Imóvel": "bg-blue-500/15 text-blue-700 border-blue-500/30",
@@ -40,6 +42,7 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
     opacity: isDragging ? 0.5 : 1,
   };
   const temperatura = lead.detalhesCliente?.temperatura ?? "Morno";
+  const suggestion = useSuggestion(lead);
 
   return (
     <div
@@ -73,6 +76,12 @@ export function LeadCard({ lead, onEdit, onAdvance, onTransfer, pipeline, showPi
         <div className="flex items-center gap-1 text-[11px] text-foreground">
           <Calendar className="h-3 w-3" />
           {localDate(lead.proximoFollowUp).toLocaleDateString("pt-BR")} · {lead.proximaAcaoTipo}
+        </div>
+      )}
+      {suggestion && (
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px] space-y-0.5">
+          <div className="flex items-start gap-1 font-medium text-foreground"><Sparkles className="h-3 w-3 mt-0.5 shrink-0 text-primary" /><span>{suggestion.proximoPasso}</span></div>
+          <div className="text-muted-foreground"><span className="font-medium">Motivo:</span> {suggestion.motivo}</div>
         </div>
       )}
       <div className="flex items-center gap-1 pt-1 border-t border-border" onPointerDown={(e) => e.stopPropagation()}>
