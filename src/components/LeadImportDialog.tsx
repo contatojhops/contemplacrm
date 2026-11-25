@@ -173,8 +173,7 @@ function parseCsv(text: string) {
     };
     if (!row.nome.trim()) row.error = "Nome não informado.";
     else if (!normalizePhone(row.telefone)) row.error = "Telefone não informado.";
-    else if (row.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())) row.error = "E-mail inválido.";
-    else if (produtos.some(item => !Number.isFinite(item.valorUnitario) || item.valorUnitario < 0 || !Number.isInteger(item.quantidade) || item.quantidade < 1) || (capacidade !== undefined && !Number.isFinite(capacidade))) row.error = "Confira quantidades e valores numéricos dos produtos.";
+    if (row.warning && row.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())) row.email = "";
     return row;
   });
 }
