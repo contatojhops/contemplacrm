@@ -170,7 +170,7 @@ function parseCsv(text: string) {
     if (produto1 && (!Number.isInteger(rawQuantidade) || rawQuantidade < 1)) warnings.push({ severity: "warning", message: `Quantidade do produto “${produto1}” inválida. Será considerada 1 unidade.` });
     if (produto2 && (!Number.isInteger(rawQuantidade2) || rawQuantidade2 < 1)) warnings.push({ severity: "warning", message: `Quantidade do produto “${produto2}” inválida. Será considerada 1 unidade.` });
     if (rawCapacidade !== undefined && !Number.isFinite(rawCapacidade)) warnings.push({ severity: "warning", message: "Capacidade mensal inválida. Essa informação será deixada em branco no cadastro." });
-    if (get("email").trim() && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(get("email").trim())) warnings.push({ severity: "warning", message: "E-mail inválido. O endereço será desconsiderado e o campo ficará em branco." });
+    if (get("email").trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(get("email").trim())) warnings.push({ severity: "warning", message: "E-mail inválido. O endereço será desconsiderado e o campo ficará em branco." });
     const row: ImportRow = {
       line: index + 2, nome: get("nome"), telefone: get("telefone"), email: get("email"),
       produto: produtos[0]?.produto ?? "", valorCarta: totalProdutos, produtos, origem: get("origem") || "Importação",
