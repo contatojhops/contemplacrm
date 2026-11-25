@@ -165,8 +165,8 @@ function parseCsv(text: string) {
     const capacidade = rawCapacidade !== undefined && Number.isFinite(rawCapacidade) ? rawCapacidade : undefined;
     const temperature = get("temperatura").trim().toLocaleLowerCase("pt-BR");
     const warnings: ImportRow["warnings"] = [];
-    if (produto1 && !Number.isFinite(rawValorCarta)) warnings.push({ severity: "critical", message: `Valor do produto “${produto1}” inválido. O lead será importado com valor R$ 0,00 para esse produto; corrija o valor depois ou ajuste a planilha.` });
-    if (produto2 && !Number.isFinite(rawValorCarta2)) warnings.push({ severity: "critical", message: `Valor do produto “${produto2}” inválido. O lead será importado com valor R$ 0,00 para esse produto; corrija o valor depois ou ajuste a planilha.` });
+    if (produto1 && (!get("valorCarta").trim() || !Number.isFinite(rawValorCarta))) warnings.push({ severity: "critical", message: `Valor do produto “${produto1}” inválido. O lead será importado com valor R$ 0,00 para esse produto; corrija o valor depois ou ajuste a planilha.` });
+    if (produto2 && (!get("valorCarta2").trim() || !Number.isFinite(rawValorCarta2))) warnings.push({ severity: "critical", message: `Valor do produto “${produto2}” inválido. O lead será importado com valor R$ 0,00 para esse produto; corrija o valor depois ou ajuste a planilha.` });
     if (produto1 && (!Number.isInteger(rawQuantidade) || rawQuantidade < 1)) warnings.push({ severity: "warning", message: `Quantidade do produto “${produto1}” inválida. Será considerada 1 unidade.` });
     if (produto2 && (!Number.isInteger(rawQuantidade2) || rawQuantidade2 < 1)) warnings.push({ severity: "warning", message: `Quantidade do produto “${produto2}” inválida. Será considerada 1 unidade.` });
     if (rawCapacidade !== undefined && !Number.isFinite(rawCapacidade)) warnings.push({ severity: "warning", message: "Capacidade mensal inválida. Essa informação será deixada em branco no cadastro." });
